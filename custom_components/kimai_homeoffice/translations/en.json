@@ -22,22 +22,6 @@
         "data": {
           "activity_id": "Activity"
         }
-      },
-      "init": {
-        "title": "Configure options",
-        "description": "Configure automatic start and stop settings.",
-        "data": {
-          "auto_start": "Enable automatic start",
-          "worker_sensor": "Work computer sensor",
-          "start_after": "Start from",
-          "start_before": "Start until",
-          "offline_stop": "Enable offline stop",
-          "offline_minutes": "Offline after minutes",
-          "safety_stop": "Enable safety stop",
-          "safety_stop_time": "Safety stop time",
-          "notify": "Enable notification after stopping",
-          "notify_service": "Notify service"
-        }
       }
     },
     "error": {
@@ -46,13 +30,47 @@
       "api_error": "Kimai returned an API error.",
       "no_projects": "No visible projects were found.",
       "no_activities": "No visible activities were found.",
-      "unknown": "Unknown error. See Home Assistant log.",
-      "invalid_time": "Invalid time format. Please use HH:MM.",
-      "invalid_time_range": "Start and end time must not be equal.",
-      "required": "This field is required."
+      "unknown": "Unknown error. See Home Assistant log."
     },
     "abort": {
       "already_configured": "This Kimai URL is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configure options",
+        "description": "Configure automatic start and stop settings.",
+        "data": {
+          "auto_start": "Automatic start",
+          "worker_sensor": "Work computer sensor",
+          "start_after": "Start from",
+          "start_before": "Start until",
+          "offline_stop": "Offline stop",
+          "offline_minutes": "Offline after minutes",
+          "safety_stop": "Safety stop",
+          "safety_stop_time": "Safety stop time",
+          "notify": "Notification after clocking out",
+          "notify_service": "Notify service"
+        },
+        "data_description": {
+          "auto_start": "Automatically starts a Kimai time entry when the work computer sensor turns on.",
+          "worker_sensor": "Select the sensor or binary sensor that represents your work computer or home office status.",
+          "start_after": "Earliest time for automatic start in HH:MM format.",
+          "start_before": "Latest time for automatic start in HH:MM format.",
+          "offline_stop": "Automatically stops the running Kimai time entry when the work computer sensor goes offline.",
+          "offline_minutes": "Number of minutes to wait before clocking out after the sensor goes offline.",
+          "safety_stop": "Stops the running Kimai time entry at a fixed time each day.",
+          "safety_stop_time": "Time for the safety stop in HH:MM format.",
+          "notify": "Sends a notification after automatic clock-out.",
+          "notify_service": "Home Assistant notify service, for example notify.mobile_app_alex_iphone."
+        }
+      }
+    },
+    "error": {
+      "invalid_time": "Invalid time format. Please use HH:MM.",
+      "invalid_time_range": "Start and end time must not be equal.",
+      "required": "This field is required."
     }
   }
 }
