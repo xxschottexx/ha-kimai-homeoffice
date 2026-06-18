@@ -1,0 +1,15 @@
+start:
+  name: Start
+  description: Startet eine neue Kimai-Homeoffice-Zeitbuchung.
+
+stop:
+  name: Stop
+  description: Stoppt die aktuell laufende Kimai-Homeoffice-Zeitbuchung.
+
+toggle:
+  name: Toggle
+  description: Startet oder stoppt die Kimai-Homeoffice-Zeitbuchung abhängig vom aktuellen Status.
+
+refresh:
+  name: Aktualisieren
+  description: Aktualisiert die Kimai-Homeoffice-Daten.

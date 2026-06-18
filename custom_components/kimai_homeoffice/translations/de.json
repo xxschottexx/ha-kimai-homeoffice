@@ -1,0 +1,39 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kimai Homeoffice einrichten",
+        "description": "Gib die Kimai-Adresse und deinen API-Token ein.",
+        "data": {
+          "base_url": "Kimai URL",
+          "api_token": "API Token"
+        }
+      },
+      "project": {
+        "title": "Projekt auswählen",
+        "description": "Wähle das Kimai-Projekt für deine Homeoffice-Zeiterfassung.",
+        "data": {
+          "project_id": "Projekt"
+        }
+      },
+      "activity": {
+        "title": "Tätigkeit auswählen",
+        "description": "Wähle die Tätigkeit, die beim Einstempeln verwendet werden soll.",
+        "data": {
+          "activity_id": "Tätigkeit"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kimai ist nicht erreichbar. Prüfe URL und Netzwerk.",
+      "auth": "Der API-Token ist ungültig oder hat keine Berechtigung.",
+      "api_error": "Kimai hat einen API-Fehler zurückgegeben.",
+      "no_projects": "Es wurden keine sichtbaren Projekte gefunden.",
+      "no_activities": "Es wurden keine sichtbaren Tätigkeiten gefunden.",
+      "unknown": "Unbekannter Fehler. Siehe Home-Assistant-Log."
+    },
+    "abort": {
+      "already_configured": "Diese Kimai-URL ist bereits eingerichtet."
+    }
+  }
+}
