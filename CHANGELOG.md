@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0 - 2026-06-18
+
+### Added
+- Options flow for automatic start, offline stop, safety stop and notify service
+- Automatic Kimai start when work computer sensor turns on within configured start window
+- Automatic Kimai stop after configured offline minutes when the sensor turns off
+- Automatic Kimai stop at configured safety stop time
+- Notification after stopping using a configured notify service
+
 ## 0.1.0 - 2026-06-17
 
 ### Added

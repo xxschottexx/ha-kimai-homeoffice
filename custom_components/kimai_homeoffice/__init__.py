@@ -3,12 +3,31 @@
 from __future__ import annotations
 
 import logging
+from datetime import datetime, timedelta
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.const import STATE_OFF, STATE_ON
+from homeassistant.core import CALLBACK_TYPE, HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.event import (
+    async_call_later,
+    async_track_point_in_time,
+    async_track_state_change_event,
+)
+from homeassistant.util import dt as dt_util
 
-from .const import DOMAIN, PLATFORMS
+from .const import (
+    DOMAIN,
+    PLATFORMS,
+    CONF_AUTO_START,
+    CONF_OFFLINE_MINUTES,
+    CONF_OFFLINE_STOP,
+    CONF_SAFETY_STOP,
+    CONF_SAFETY_STOP_TIME,
+    CONF_START_AFTER,
+    CONF_START_BEFORE,
+    CONF_WORKER_SENSOR,
+)
 from .coordinator import KimaiHomeofficeCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -62,6 +81,209 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     return True
 
 
+class KimaiHomeofficeAutomation:
+    """Automation helper for Kimai Homeoffice."""
+
+    def __init__(self, hass: HomeAssistant, entry: ConfigEntry, coordinator: KimaiHomeofficeCoordinator) -> None:
+        self.hass = hass
+        self.entry = entry
+        self.coordinator = coordinator
+        self._state_unsub: CALLBACK_TYPE | None = None
+        self._offline_unsub: CALLBACK_TYPE | None = None
+        self._safety_unsub: CALLBACK_TYPE | None = None
+
+    async def async_initialize(self) -> None:
+        self._setup_worker_sensor_listener()
+        await self._async_schedule_safety_stop()
+
+    def async_remove(self) -> None:
+        self._cancel_offline_timer()
+        self._cancel_safety_stop()
+        if self._state_unsub:
+            self._state_unsub()
+            self._state_unsub = None
+
+    def _setup_worker_sensor_listener(self) -> None:
+        worker_sensor = self._worker_sensor
+        if not worker_sensor:
+            return
+
+        self._state_unsub = async_track_state_change_event(
+            self.hass,
+            [worker_sensor],
+            self._async_worker_state_changed,
+        )
+
+    def _cancel_offline_timer(self) -> None:
+        if self._offline_unsub:
+            self._offline_unsub()
+            self._offline_unsub = None
+
+    def _cancel_safety_stop(self) -> None:
+        if self._safety_unsub:
+            self._safety_unsub()
+            self._safety_unsub = None
+
+    @property
+    def _worker_sensor(self) -> str | None:
+        return self.entry.options.get(CONF_WORKER_SENSOR) or None
+
+    @property
+    def _auto_start_enabled(self) -> bool:
+        return bool(self.entry.options.get(CONF_AUTO_START, False))
+
+    @property
+    def _offline_stop_enabled(self) -> bool:
+        return bool(self.entry.options.get(CONF_OFFLINE_STOP, False))
+
+    @property
+    def _offline_minutes(self) -> int:
+        return int(self.entry.options.get(CONF_OFFLINE_MINUTES, 5))
+
+    @property
+    def _safety_stop_enabled(self) -> bool:
+        return bool(self.entry.options.get(CONF_SAFETY_STOP, False))
+
+    @property
+    def _safety_stop_time(self) -> str:
+        return str(self.entry.options.get(CONF_SAFETY_STOP_TIME, "17:15"))
+
+    @property
+    def _start_after(self) -> str:
+        return str(self.entry.options.get(CONF_START_AFTER, "05:00"))
+
+    @property
+    def _start_before(self) -> str:
+        return str(self.entry.options.get(CONF_START_BEFORE, "17:00"))
+
+    def _active_id(self) -> int:
+        if self.coordinator.data is None:
+            return 0
+        return self.coordinator.data.active_id
+
+    async def _async_worker_state_changed(self, event) -> None:
+        new_state = event.data.get("new_state")
+        if new_state is None:
+            return
+
+        if new_state.state == STATE_ON:
+            self._cancel_offline_timer()
+            await self._async_handle_auto_start()
+            return
+
+        if new_state.state == STATE_OFF:
+            await self._async_schedule_offline_stop()
+
+    async def _async_handle_auto_start(self) -> None:
+        if not self._auto_start_enabled:
+            return
+
+        if self._active_id() > 0:
+            return
+
+        if not self._is_within_start_window():
+            return
+
+        try:
+            await self.coordinator.async_start()
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.error("Auto-Start fehlgeschlagen: %s", err)
+
+    async def _async_schedule_offline_stop(self) -> None:
+        self._cancel_offline_timer()
+
+        if not self._offline_stop_enabled:
+            return
+
+        if self._active_id() <= 0:
+            return
+
+        self._offline_unsub = async_call_later(
+            self.hass,
+            self._offline_minutes * 60,
+            self._async_handle_offline_stop,
+        )
+
+    async def _async_handle_offline_stop(self, _now) -> None:
+        if not self._offline_stop_enabled:
+            return
+
+        worker_sensor = self._worker_sensor
+        if not worker_sensor:
+            return
+
+        state = self.hass.states.get(worker_sensor)
+        if state is None or state.state != STATE_OFF:
+            return
+
+        if self._active_id() <= 0:
+            return
+
+        try:
+            await self.coordinator.async_stop()
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.error("Offline-Stopp fehlgeschlagen: %s", err)
+
+    async def _async_schedule_safety_stop(self) -> None:
+        self._cancel_safety_stop()
+
+        if not self._safety_stop_enabled:
+            return
+
+        fire_time = self._async_next_safety_stop_time()
+        if fire_time is None:
+            return
+
+        self._safety_unsub = async_track_point_in_time(
+            self.hass,
+            self._async_handle_safety_stop,
+            fire_time,
+        )
+
+    async def _async_handle_safety_stop(self, _now) -> None:
+        if not self._safety_stop_enabled:
+            return
+
+        if self._active_id() <= 0:
+            await self._async_schedule_safety_stop()
+            return
+
+        try:
+            await self.coordinator.async_stop()
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.error("Sicherheits-Stopp fehlgeschlagen: %s", err)
+        finally:
+            await self._async_schedule_safety_stop()
+
+    def _async_next_safety_stop_time(self) -> datetime | None:
+        try:
+            stop_time = datetime.strptime(self._safety_stop_time, "%H:%M").time()
+        except ValueError:
+            _LOGGER.error("Ungültige Sicherheits-Stopp-Zeit: %s", self._safety_stop_time)
+            return None
+
+        now = dt_util.now()
+        fire_time = datetime.combine(now.date(), stop_time, tzinfo=now.tzinfo)
+        if fire_time <= now:
+            fire_time = fire_time + timedelta(days=1)
+
+        return fire_time
+
+    def _is_within_start_window(self) -> bool:
+        try:
+            start_time = datetime.strptime(self._start_after, "%H:%M").time()
+            end_time = datetime.strptime(self._start_before, "%H:%M").time()
+            now_time = dt_util.now().time()
+        except ValueError:
+            _LOGGER.warning("Ungültiges Startzeitfenster: %s - %s", self._start_after, self._start_before)
+            return False
+
+        if start_time <= end_time:
+            return start_time <= now_time <= end_time
+
+        return now_time >= start_time or now_time <= end_time
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -73,6 +295,15 @@ async def async_setup_entry(
 
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    automation = KimaiHomeofficeAutomation(hass, entry, coordinator)
+    await automation.async_initialize()
+    entry.async_on_unload(automation.async_remove)
+
+    async def _async_reload_entry(_hass: HomeAssistant, _entry: ConfigEntry) -> None:
+        await hass.config_entries.async_reload(_entry.entry_id)
+
+    entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

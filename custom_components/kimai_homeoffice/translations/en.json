@@ -1,0 +1,58 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up Kimai Homeoffice",
+        "description": "Enter the Kimai URL and your API token.",
+        "data": {
+          "base_url": "Kimai URL",
+          "api_token": "API Token"
+        }
+      },
+      "project": {
+        "title": "Select project",
+        "description": "Choose the Kimai project used for home office time tracking.",
+        "data": {
+          "project_id": "Project"
+        }
+      },
+      "activity": {
+        "title": "Select activity",
+        "description": "Choose the activity used when clocking in.",
+        "data": {
+          "activity_id": "Activity"
+        }
+      },
+      "init": {
+        "title": "Configure options",
+        "description": "Configure automatic start and stop settings.",
+        "data": {
+          "auto_start": "Enable automatic start",
+          "worker_sensor": "Work computer sensor",
+          "start_after": "Start from",
+          "start_before": "Start until",
+          "offline_stop": "Enable offline stop",
+          "offline_minutes": "Offline after minutes",
+          "safety_stop": "Enable safety stop",
+          "safety_stop_time": "Safety stop time",
+          "notify": "Enable notification after stopping",
+          "notify_service": "Notify service"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Kimai is not reachable. Check URL and network.",
+      "auth": "The API token is invalid or lacks permission.",
+      "api_error": "Kimai returned an API error.",
+      "no_projects": "No visible projects were found.",
+      "no_activities": "No visible activities were found.",
+      "unknown": "Unknown error. See Home Assistant log.",
+      "invalid_time": "Invalid time format. Please use HH:MM.",
+      "invalid_time_range": "Start and end time must not be equal.",
+      "required": "This field is required."
+    },
+    "abort": {
+      "already_configured": "This Kimai URL is already configured."
+    }
+  }
+}

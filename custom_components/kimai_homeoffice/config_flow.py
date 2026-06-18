@@ -8,14 +8,33 @@ from typing import Any
 import voluptuous as vol
 
 from homeassistant import config_entries
+from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
     CONF_ACTIVITY_ID,
     CONF_API_TOKEN,
+    CONF_AUTO_START,
     CONF_BASE_URL,
+    CONF_NOTIFY,
+    CONF_NOTIFY_SERVICE,
+    CONF_OFFLINE_MINUTES,
+    CONF_OFFLINE_STOP,
     CONF_PROJECT_ID,
+    CONF_WORKER_SENSOR,
+    CONF_SAFETY_STOP,
+    CONF_SAFETY_STOP_TIME,
+    CONF_START_AFTER,
+    CONF_START_BEFORE,
     DEFAULT_NAME,
+    DEFAULT_AUTO_START,
+    DEFAULT_NOTIFY,
+    DEFAULT_OFFLINE_MINUTES,
+    DEFAULT_OFFLINE_STOP,
+    DEFAULT_SAFETY_STOP,
+    DEFAULT_START_AFTER,
+    DEFAULT_START_BEFORE,
+    DEFAULT_SAFETY_STOP_TIME,
     DOMAIN,
 )
 from .kimai_api import KimaiApi, KimaiApiError, KimaiAuthError, KimaiConnectionError
@@ -196,3 +215,96 @@ class KimaiHomeofficeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def _activity_label(activity: dict[str, Any]) -> str:
         """Return activity label."""
         return str(activity.get("name", f"Tätigkeit {activity.get('id')}"))
+
+    @staticmethod
+    @callback
+    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> config_entries.OptionsFlow:
+        """Return options flow handler."""
+        return KimaiHomeofficeOptionsFlowHandler(config_entry)
+
+
+class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle Kimai Homeoffice options."""
+
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
+        """Initialize options flow."""
+        self._config_entry = config_entry
+
+    async def async_step_init(
+        self,
+        user_input: dict[str, Any] | None = None,
+    ) -> config_entries.ConfigFlowResult:
+        """Manage the options."""
+        errors: dict[str, str] = {}
+        options = self._config_entry.options
+
+        if user_input is not None:
+            if user_input.get(CONF_NOTIFY) and not user_input.get(CONF_NOTIFY_SERVICE):
+                errors[CONF_NOTIFY_SERVICE] = "required"
+            elif user_input.get(CONF_START_AFTER) and user_input.get(CONF_START_BEFORE):
+                try:
+                    start = __import__("datetime").datetime.strptime(
+                        user_input[CONF_START_AFTER], "%H:%M"
+                    ).time()
+                    end = __import__("datetime").datetime.strptime(
+                        user_input[CONF_START_BEFORE], "%H:%M"
+                    ).time()
+                except ValueError:
+                    errors["base"] = "invalid_time"
+                else:
+                    if start == end:
+                        errors["base"] = "invalid_time_range"
+
+            if not errors:
+                return self.async_create_entry(title="", data=user_input)
+
+        schema = vol.Schema(
+            {
+                vol.Optional(
+                    CONF_AUTO_START,
+                    default=options.get(CONF_AUTO_START, DEFAULT_AUTO_START),
+                ): bool,
+                vol.Optional(
+                    CONF_WORKER_SENSOR,
+                    default=options.get(CONF_WORKER_SENSOR, ""),
+                ): str,
+                vol.Optional(
+                    CONF_START_AFTER,
+                    default=options.get(CONF_START_AFTER, DEFAULT_START_AFTER),
+                ): str,
+                vol.Optional(
+                    CONF_START_BEFORE,
+                    default=options.get(CONF_START_BEFORE, DEFAULT_START_BEFORE),
+                ): str,
+                vol.Optional(
+                    CONF_OFFLINE_STOP,
+                    default=options.get(CONF_OFFLINE_STOP, DEFAULT_OFFLINE_STOP),
+                ): bool,
+                vol.Optional(
+                    CONF_OFFLINE_MINUTES,
+                    default=options.get(CONF_OFFLINE_MINUTES, DEFAULT_OFFLINE_MINUTES),
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
+                vol.Optional(
+                    CONF_SAFETY_STOP,
+                    default=options.get(CONF_SAFETY_STOP, DEFAULT_SAFETY_STOP),
+                ): bool,
+                vol.Optional(
+                    CONF_SAFETY_STOP_TIME,
+                    default=options.get(CONF_SAFETY_STOP_TIME, DEFAULT_SAFETY_STOP_TIME),
+                ): str,
+                vol.Optional(
+                    CONF_NOTIFY,
+                    default=options.get(CONF_NOTIFY, DEFAULT_NOTIFY),
+                ): bool,
+                vol.Optional(
+                    CONF_NOTIFY_SERVICE,
+                    default=options.get(CONF_NOTIFY_SERVICE, ""),
+                ): str,
+            }
+        )
+
+        return self.async_show_form(
+            step_id="init",
+            data_schema=schema,
+            errors=errors,
+        )

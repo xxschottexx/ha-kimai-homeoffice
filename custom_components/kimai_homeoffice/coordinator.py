@@ -14,6 +14,8 @@ from .const import (
     CONF_ACTIVITY_ID,
     CONF_API_TOKEN,
     CONF_BASE_URL,
+    CONF_NOTIFY,
+    CONF_NOTIFY_SERVICE,
     CONF_PROJECT_ID,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
@@ -69,6 +71,57 @@ class KimaiHomeofficeCoordinator(DataUpdateCoordinator[KimaiSummary]):
         """Stop active Kimai timesheet."""
         await self.api.stop_timesheet()
         await self.async_request_refresh()
+
+        if self._should_send_notification():
+            await self._async_send_stop_notification()
+
+    def _should_send_notification(self) -> bool:
+        return bool(
+            self.entry.options.get(CONF_NOTIFY, False)
+            and self.entry.options.get(CONF_NOTIFY_SERVICE)
+        )
+
+    async def _async_send_stop_notification(self) -> None:
+        notify_service = self.entry.options.get(CONF_NOTIFY_SERVICE)
+        if not notify_service or "." not in notify_service:
+            _LOGGER.warning(
+                "Notify service ist ungültig oder fehlt: %s",
+                notify_service,
+            )
+            return
+
+        if self.data is None:
+            _LOGGER.warning("Keine Kimai-Daten zum Senden der Benachrichtigung")
+            return
+
+        today = self.format_seconds(self.data.today_seconds)
+        week = self.format_seconds(self.data.week_seconds)
+        month = self.format_seconds(self.data.month_seconds)
+
+        domain, service = notify_service.split(".", 1)
+        message = (
+            f"Heute: {today} | Woche: {week} | Monat: {month}"
+        )
+
+        try:
+            self.hass.services.async_call(
+                domain,
+                service,
+                {
+                    "title": "Homeoffice beendet",
+                    "message": message,
+                },
+                blocking=False,
+            )
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.error("Benachrichtigung konnte nicht gesendet werden: %s", err)
+
+    @staticmethod
+    def format_seconds(seconds: int) -> str:
+        """Return seconds formatted as HH:MM."""
+        hours = seconds // 3600
+        minutes = (seconds % 3600) // 60
+        return f"{hours:02d}:{minutes:02d}"
 
     async def async_toggle(self) -> None:
         """Toggle Kimai timesheet."""
