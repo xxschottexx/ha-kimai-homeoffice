@@ -267,6 +267,7 @@ class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_WORKER_SENSOR,
                     default=options.get(CONF_WORKER_SENSOR, ""),
+                    selector={"entity": {"domain": "binary_sensor"}},
                 ): str,
                 vol.Optional(
                     CONF_START_AFTER,
