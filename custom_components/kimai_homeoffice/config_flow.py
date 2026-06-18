@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 import logging
+import re
 from typing import Any
 
 import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.helpers import selector
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
@@ -40,6 +43,18 @@ from .const import (
 from .kimai_api import KimaiApi, KimaiApiError, KimaiAuthError, KimaiConnectionError
 
 _LOGGER = logging.getLogger(__name__)
+
+TIME_PATTERN = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+
+
+def _is_hhmm(value: Any) -> bool:
+    """Return true if value is a strict HH:MM time string."""
+    return isinstance(value, str) and TIME_PATTERN.fullmatch(value) is not None
+
+
+def _parse_hhmm(value: str):
+    """Parse a strict HH:MM time string."""
+    return datetime.strptime(value, "%H:%M").time()
 
 
 class KimaiHomeofficeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -99,7 +114,7 @@ class KimaiHomeofficeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         schema = vol.Schema(
             {
-                vol.Required(CONF_BASE_URL, default="http://192.168.178.172"): str,
+                vol.Required(CONF_BASE_URL): str,
                 vol.Required(CONF_API_TOKEN): str,
             }
         )
@@ -241,19 +256,24 @@ class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
         if user_input is not None:
             if user_input.get(CONF_NOTIFY) and not user_input.get(CONF_NOTIFY_SERVICE):
                 errors[CONF_NOTIFY_SERVICE] = "required"
-            elif user_input.get(CONF_START_AFTER) and user_input.get(CONF_START_BEFORE):
-                try:
-                    start = __import__("datetime").datetime.strptime(
-                        user_input[CONF_START_AFTER], "%H:%M"
-                    ).time()
-                    end = __import__("datetime").datetime.strptime(
-                        user_input[CONF_START_BEFORE], "%H:%M"
-                    ).time()
-                except ValueError:
-                    errors["base"] = "invalid_time"
-                else:
-                    if start == end:
-                        errors["base"] = "invalid_time_range"
+
+            for field in (
+                CONF_START_AFTER,
+                CONF_START_BEFORE,
+                CONF_SAFETY_STOP_TIME,
+            ):
+                if user_input.get(field) and not _is_hhmm(user_input[field]):
+                    errors[field] = "invalid_time"
+
+            if (
+                not errors
+                and user_input.get(CONF_START_AFTER)
+                and user_input.get(CONF_START_BEFORE)
+            ):
+                start = _parse_hhmm(user_input[CONF_START_AFTER])
+                end = _parse_hhmm(user_input[CONF_START_BEFORE])
+                if start == end:
+                    errors["base"] = "invalid_time_range"
 
             if not errors:
                 return self.async_create_entry(title="", data=user_input)
@@ -267,7 +287,11 @@ class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
                 vol.Optional(
                     CONF_WORKER_SENSOR,
                     default=options.get(CONF_WORKER_SENSOR, ""),
-                ): str,
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=["binary_sensor", "sensor"],
+                    )
+                ),
                 vol.Optional(
                     CONF_START_AFTER,
                     default=options.get(CONF_START_AFTER, DEFAULT_START_AFTER),

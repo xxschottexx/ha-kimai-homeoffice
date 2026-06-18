@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.2.1 - 2026-06-18
+
+### Improved
+- Improved options flow labels
+- Added entity selector for worker sensor
+- Improved notify service field
+- Improved German and English translations
+
+### Fixed
+- Avoid technical option names in the Home Assistant UI
+
 ## 0.2.0 - 2026-06-18
 
 ### Added
