@@ -51,7 +51,11 @@
           "safety_stop": "Sicherheits-Stopp",
           "safety_stop_time": "Sicherheits-Stopp Uhrzeit",
           "notify": "Benachrichtigung nach Ausstempeln",
-          "notify_service": "Notify-Dienst"
+          "notify_service": "Notify-Dienst",
+          "button_enabled": "Button-Steuerung aktivieren",
+          "button_entity": "Button-Entity",
+          "button_valid_states": "Gültige Tastendrücke",
+          "button_cooldown_seconds": "Sperrzeit nach Tastendruck"
         },
         "data_description": {
           "auto_start": "Startet eine Kimai-Zeitbuchung automatisch, wenn der Arbeitsrechner-Sensor eingeschaltet wird.",
@@ -63,7 +67,11 @@
           "safety_stop": "Stoppt die laufende Kimai-Zeitbuchung täglich zu einer festen Uhrzeit.",
           "safety_stop_time": "Uhrzeit für den Sicherheits-Stopp im Format HH:MM.",
           "notify": "Sendet nach dem automatischen Ausstempeln eine Benachrichtigung.",
-          "notify_service": "Home-Assistant-Notify-Dienst, z. B. notify.mobile_app_alex_iphone."
+          "notify_service": "Home-Assistant-Notify-Dienst, z. B. notify.mobile_app_alex_iphone.",
+          "button_enabled": "Aktiviert die interne Button-Steuerung für Kommen und Gehen.",
+          "button_entity": "Sensor oder Binary Sensor, der beim Tastendruck seinen Zustand ändert.",
+          "button_valid_states": "Kommagetrennte Zustände, z. B. on,single,press,toggle.",
+          "button_cooldown_seconds": "Verhindert doppelte Auslösung bei mehrfachen Events."
         }
       }
     },

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timedelta
+from time import monotonic
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import STATE_OFF, STATE_ON
+from homeassistant.const import STATE_OFF, STATE_ON, STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import CALLBACK_TYPE, HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.event import (
@@ -20,6 +21,10 @@ from .const import (
     DOMAIN,
     PLATFORMS,
     CONF_AUTO_START,
+    CONF_BUTTON_COOLDOWN_SECONDS,
+    CONF_BUTTON_ENABLED,
+    CONF_BUTTON_ENTITY,
+    CONF_BUTTON_VALID_STATES,
     CONF_OFFLINE_MINUTES,
     CONF_OFFLINE_STOP,
     CONF_SAFETY_STOP,
@@ -27,6 +32,8 @@ from .const import (
     CONF_START_AFTER,
     CONF_START_BEFORE,
     CONF_WORKER_SENSOR,
+    DEFAULT_BUTTON_COOLDOWN_SECONDS,
+    DEFAULT_BUTTON_VALID_STATES,
 )
 from .coordinator import KimaiHomeofficeCoordinator
 
@@ -89,11 +96,14 @@ class KimaiHomeofficeAutomation:
         self.entry = entry
         self.coordinator = coordinator
         self._state_unsub: CALLBACK_TYPE | None = None
+        self._button_unsub: CALLBACK_TYPE | None = None
         self._offline_unsub: CALLBACK_TYPE | None = None
         self._safety_unsub: CALLBACK_TYPE | None = None
+        self._last_button_press = 0.0
 
     async def async_initialize(self) -> None:
         self._setup_worker_sensor_listener()
+        self._setup_button_listener()
         await self._async_schedule_safety_stop()
 
     def async_remove(self) -> None:
@@ -102,6 +112,10 @@ class KimaiHomeofficeAutomation:
         if self._state_unsub:
             self._state_unsub()
             self._state_unsub = None
+        if self._button_unsub:
+            self._button_unsub()
+            self._button_unsub = None
+            _LOGGER.debug("Button listener removed")
 
     def _setup_worker_sensor_listener(self) -> None:
         worker_sensor = self._worker_sensor
@@ -113,6 +127,18 @@ class KimaiHomeofficeAutomation:
             [worker_sensor],
             self._async_worker_state_changed,
         )
+
+    def _setup_button_listener(self) -> None:
+        button_entity = self._button_entity
+        if not self._button_enabled or not button_entity:
+            return
+
+        self._button_unsub = async_track_state_change_event(
+            self.hass,
+            [button_entity],
+            self._async_button_state_changed,
+        )
+        _LOGGER.debug("Button listener registered for %s", button_entity)
 
     def _cancel_offline_timer(self) -> None:
         if self._offline_unsub:
@@ -156,6 +182,46 @@ class KimaiHomeofficeAutomation:
     def _start_before(self) -> str:
         return str(self.entry.options.get(CONF_START_BEFORE, "17:00"))
 
+    @property
+    def _button_enabled(self) -> bool:
+        return bool(self.entry.options.get(CONF_BUTTON_ENABLED, False))
+
+    @property
+    def _button_entity(self) -> str | None:
+        return self.entry.options.get(CONF_BUTTON_ENTITY) or None
+
+    @property
+    def _button_valid_states(self) -> set[str]:
+        raw_states = str(
+            self.entry.options.get(
+                CONF_BUTTON_VALID_STATES,
+                DEFAULT_BUTTON_VALID_STATES,
+            )
+        )
+        return {
+            state.strip().lower()
+            for state in raw_states.split(",")
+            if state.strip()
+        }
+
+    @property
+    def _button_cooldown_seconds(self) -> int:
+        try:
+            return max(
+                0,
+                min(
+                    30,
+                    int(
+                        self.entry.options.get(
+                            CONF_BUTTON_COOLDOWN_SECONDS,
+                            DEFAULT_BUTTON_COOLDOWN_SECONDS,
+                        )
+                    ),
+                ),
+            )
+        except (TypeError, ValueError):
+            return DEFAULT_BUTTON_COOLDOWN_SECONDS
+
     def _active_id(self) -> int:
         if self.coordinator.data is None:
             return 0
@@ -173,6 +239,38 @@ class KimaiHomeofficeAutomation:
 
         if new_state.state == STATE_OFF:
             await self._async_schedule_offline_stop()
+
+    async def _async_button_state_changed(self, event) -> None:
+        new_state = event.data.get("new_state")
+        if new_state is None:
+            _LOGGER.debug("Button state ignored: new state is missing")
+            return
+
+        state = str(new_state.state).strip()
+        if state.lower() in {STATE_UNKNOWN, STATE_UNAVAILABLE, "none", ""}:
+            _LOGGER.debug("Button state ignored: %s", state)
+            return
+
+        if state.lower() not in self._button_valid_states:
+            _LOGGER.debug("Button state ignored: %s", state)
+            return
+
+        now = monotonic()
+        cooldown_seconds = self._button_cooldown_seconds
+        if (
+            cooldown_seconds > 0
+            and now - self._last_button_press < cooldown_seconds
+        ):
+            _LOGGER.debug("Button press ignored because cooldown is active")
+            return
+
+        self._last_button_press = now
+
+        try:
+            await self.coordinator.async_toggle()
+            _LOGGER.debug("Button toggle executed")
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.error("Button toggle failed: %s", err)
 
     async def _async_handle_auto_start(self) -> None:
         if not self._auto_start_enabled:

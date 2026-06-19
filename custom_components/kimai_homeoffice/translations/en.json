@@ -51,7 +51,11 @@
           "safety_stop": "Safety stop",
           "safety_stop_time": "Safety stop time",
           "notify": "Notification after clocking out",
-          "notify_service": "Notify service"
+          "notify_service": "Notify service",
+          "button_enabled": "Enable button control",
+          "button_entity": "Button entity",
+          "button_valid_states": "Valid button presses",
+          "button_cooldown_seconds": "Cooldown after button press"
         },
         "data_description": {
           "auto_start": "Automatically starts a Kimai time entry when the work computer sensor turns on.",
@@ -63,7 +67,11 @@
           "safety_stop": "Stops the running Kimai time entry at a fixed time each day.",
           "safety_stop_time": "Time for the safety stop in HH:MM format.",
           "notify": "Sends a notification after automatic clock-out.",
-          "notify_service": "Home Assistant notify service, for example notify.mobile_app_alex_iphone."
+          "notify_service": "Home Assistant notify service, for example notify.mobile_app_alex_iphone.",
+          "button_enabled": "Enables internal button control for clocking in and out.",
+          "button_entity": "Sensor or binary sensor that changes state when the button is pressed.",
+          "button_valid_states": "Comma-separated states, for example on,single,press,toggle.",
+          "button_cooldown_seconds": "Prevents duplicate triggers from repeated events."
         }
       }
     },

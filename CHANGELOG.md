@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.0 - 2026-06-19
+
+### Added
+- Added universal button support
+- Added optional entity based button trigger
+- Added configurable valid button states
+- Added cooldown protection for button presses
+
+### Improved
+- Homeoffice can now be started or stopped from Zigbee, MQTT, helper or other Home Assistant entities
+
 ## 0.2.1 - 2026-06-18
 
 ### Improved

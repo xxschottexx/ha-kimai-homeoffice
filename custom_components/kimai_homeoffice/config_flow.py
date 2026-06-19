@@ -19,6 +19,10 @@ from .const import (
     CONF_API_TOKEN,
     CONF_AUTO_START,
     CONF_BASE_URL,
+    CONF_BUTTON_COOLDOWN_SECONDS,
+    CONF_BUTTON_ENABLED,
+    CONF_BUTTON_ENTITY,
+    CONF_BUTTON_VALID_STATES,
     CONF_NOTIFY,
     CONF_NOTIFY_SERVICE,
     CONF_OFFLINE_MINUTES,
@@ -31,6 +35,9 @@ from .const import (
     CONF_START_BEFORE,
     DEFAULT_NAME,
     DEFAULT_AUTO_START,
+    DEFAULT_BUTTON_COOLDOWN_SECONDS,
+    DEFAULT_BUTTON_ENABLED,
+    DEFAULT_BUTTON_VALID_STATES,
     DEFAULT_NOTIFY,
     DEFAULT_OFFLINE_MINUTES,
     DEFAULT_OFFLINE_STOP,
@@ -324,6 +331,32 @@ class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_NOTIFY_SERVICE,
                     default=options.get(CONF_NOTIFY_SERVICE, ""),
                 ): str,
+                vol.Optional(
+                    CONF_BUTTON_ENABLED,
+                    default=options.get(CONF_BUTTON_ENABLED, DEFAULT_BUTTON_ENABLED),
+                ): bool,
+                vol.Optional(
+                    CONF_BUTTON_ENTITY,
+                    default=options.get(CONF_BUTTON_ENTITY, ""),
+                ): selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=["sensor", "binary_sensor", "input_button"],
+                    )
+                ),
+                vol.Optional(
+                    CONF_BUTTON_VALID_STATES,
+                    default=options.get(
+                        CONF_BUTTON_VALID_STATES,
+                        DEFAULT_BUTTON_VALID_STATES,
+                    ),
+                ): str,
+                vol.Optional(
+                    CONF_BUTTON_COOLDOWN_SECONDS,
+                    default=options.get(
+                        CONF_BUTTON_COOLDOWN_SECONDS,
+                        DEFAULT_BUTTON_COOLDOWN_SECONDS,
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=30)),
             }
         )
 
