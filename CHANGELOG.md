@@ -9,6 +9,7 @@
 
 ### Fixed
 - Support Zigbee2MQTT buttons that expose actions only through MQTT payloads
+- Allow empty button entity when MQTT trigger mode is used
 
 ## 0.3.0 - 2026-06-19
 

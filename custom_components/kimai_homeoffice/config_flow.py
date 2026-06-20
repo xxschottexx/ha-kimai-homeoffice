@@ -268,6 +268,17 @@ class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
             if user_input.get(CONF_NOTIFY) and not user_input.get(CONF_NOTIFY_SERVICE):
                 errors[CONF_NOTIFY_SERVICE] = "required"
 
+            if user_input.get(CONF_BUTTON_ENABLED):
+                trigger_type = user_input.get(
+                    CONF_BUTTON_TRIGGER_TYPE,
+                    DEFAULT_BUTTON_TRIGGER_TYPE,
+                )
+                if trigger_type == "mqtt":
+                    if not user_input.get(CONF_BUTTON_MQTT_TOPIC):
+                        errors[CONF_BUTTON_MQTT_TOPIC] = "required"
+                elif not user_input.get(CONF_BUTTON_ENTITY):
+                    errors[CONF_BUTTON_ENTITY] = "required"
+
             for field in (
                 CONF_START_AFTER,
                 CONF_START_BEFORE,
@@ -289,59 +300,83 @@ class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
             if not errors:
                 return self.async_create_entry(title="", data=user_input)
 
+        form_options = user_input if user_input is not None else options
+        worker_sensor = form_options.get(CONF_WORKER_SENSOR) or None
+        button_entity = form_options.get(CONF_BUTTON_ENTITY) or None
+
+        worker_sensor_field = vol.Optional(CONF_WORKER_SENSOR)
+        if worker_sensor:
+            worker_sensor_field = vol.Optional(
+                CONF_WORKER_SENSOR,
+                description={"suggested_value": worker_sensor},
+            )
+
+        button_entity_field = vol.Optional(CONF_BUTTON_ENTITY)
+        if button_entity:
+            button_entity_field = vol.Optional(
+                CONF_BUTTON_ENTITY,
+                description={"suggested_value": button_entity},
+            )
+
         schema = vol.Schema(
             {
                 vol.Optional(
                     CONF_AUTO_START,
-                    default=options.get(CONF_AUTO_START, DEFAULT_AUTO_START),
+                    default=form_options.get(CONF_AUTO_START, DEFAULT_AUTO_START),
                 ): bool,
-                vol.Optional(
-                    CONF_WORKER_SENSOR,
-                    default=options.get(CONF_WORKER_SENSOR, ""),
-                ): selector.EntitySelector(
+                worker_sensor_field: selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain=["binary_sensor", "sensor"],
                     )
                 ),
                 vol.Optional(
                     CONF_START_AFTER,
-                    default=options.get(CONF_START_AFTER, DEFAULT_START_AFTER),
+                    default=form_options.get(CONF_START_AFTER, DEFAULT_START_AFTER),
                 ): str,
                 vol.Optional(
                     CONF_START_BEFORE,
-                    default=options.get(CONF_START_BEFORE, DEFAULT_START_BEFORE),
+                    default=form_options.get(CONF_START_BEFORE, DEFAULT_START_BEFORE),
                 ): str,
                 vol.Optional(
                     CONF_OFFLINE_STOP,
-                    default=options.get(CONF_OFFLINE_STOP, DEFAULT_OFFLINE_STOP),
+                    default=form_options.get(CONF_OFFLINE_STOP, DEFAULT_OFFLINE_STOP),
                 ): bool,
                 vol.Optional(
                     CONF_OFFLINE_MINUTES,
-                    default=options.get(CONF_OFFLINE_MINUTES, DEFAULT_OFFLINE_MINUTES),
+                    default=form_options.get(
+                        CONF_OFFLINE_MINUTES,
+                        DEFAULT_OFFLINE_MINUTES,
+                    ),
                 ): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
                 vol.Optional(
                     CONF_SAFETY_STOP,
-                    default=options.get(CONF_SAFETY_STOP, DEFAULT_SAFETY_STOP),
+                    default=form_options.get(CONF_SAFETY_STOP, DEFAULT_SAFETY_STOP),
                 ): bool,
                 vol.Optional(
                     CONF_SAFETY_STOP_TIME,
-                    default=options.get(CONF_SAFETY_STOP_TIME, DEFAULT_SAFETY_STOP_TIME),
+                    default=form_options.get(
+                        CONF_SAFETY_STOP_TIME,
+                        DEFAULT_SAFETY_STOP_TIME,
+                    ),
                 ): str,
                 vol.Optional(
                     CONF_NOTIFY,
-                    default=options.get(CONF_NOTIFY, DEFAULT_NOTIFY),
+                    default=form_options.get(CONF_NOTIFY, DEFAULT_NOTIFY),
                 ): bool,
                 vol.Optional(
                     CONF_NOTIFY_SERVICE,
-                    default=options.get(CONF_NOTIFY_SERVICE, ""),
+                    default=form_options.get(CONF_NOTIFY_SERVICE, ""),
                 ): str,
                 vol.Optional(
                     CONF_BUTTON_ENABLED,
-                    default=options.get(CONF_BUTTON_ENABLED, DEFAULT_BUTTON_ENABLED),
+                    default=form_options.get(
+                        CONF_BUTTON_ENABLED,
+                        DEFAULT_BUTTON_ENABLED,
+                    ),
                 ): bool,
                 vol.Optional(
                     CONF_BUTTON_TRIGGER_TYPE,
-                    default=options.get(
+                    default=form_options.get(
                         CONF_BUTTON_TRIGGER_TYPE,
                         DEFAULT_BUTTON_TRIGGER_TYPE,
                     ),
@@ -350,32 +385,29 @@ class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
                         options=["entity", "mqtt"],
                     )
                 ),
-                vol.Optional(
-                    CONF_BUTTON_ENTITY,
-                    default=options.get(CONF_BUTTON_ENTITY, ""),
-                ): selector.EntitySelector(
+                button_entity_field: selector.EntitySelector(
                     selector.EntitySelectorConfig(
                         domain=["sensor", "binary_sensor", "input_button"],
                     )
                 ),
                 vol.Optional(
                     CONF_BUTTON_MQTT_TOPIC,
-                    default=options.get(CONF_BUTTON_MQTT_TOPIC, ""),
+                    default=form_options.get(CONF_BUTTON_MQTT_TOPIC, ""),
                 ): str,
                 vol.Optional(
                     CONF_BUTTON_MQTT_JSON_KEY,
-                    default=options.get(CONF_BUTTON_MQTT_JSON_KEY, ""),
+                    default=form_options.get(CONF_BUTTON_MQTT_JSON_KEY, ""),
                 ): str,
                 vol.Optional(
                     CONF_BUTTON_VALID_STATES,
-                    default=options.get(
+                    default=form_options.get(
                         CONF_BUTTON_VALID_STATES,
                         DEFAULT_BUTTON_VALID_STATES,
                     ),
                 ): str,
                 vol.Optional(
                     CONF_BUTTON_COOLDOWN_SECONDS,
-                    default=options.get(
+                    default=form_options.get(
                         CONF_BUTTON_COOLDOWN_SECONDS,
                         DEFAULT_BUTTON_COOLDOWN_SECONDS,
                     ),
