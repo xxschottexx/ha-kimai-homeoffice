@@ -53,7 +53,10 @@
           "notify": "Notification after clocking out",
           "notify_service": "Notify service",
           "button_enabled": "Enable button control",
+          "button_trigger_type": "Button trigger",
           "button_entity": "Button entity",
+          "button_mqtt_topic": "Button MQTT topic",
+          "button_mqtt_json_key": "Button MQTT JSON key",
           "button_valid_states": "Valid button presses",
           "button_cooldown_seconds": "Cooldown after button press"
         },
@@ -69,7 +72,10 @@
           "notify": "Sends a notification after automatic clock-out.",
           "notify_service": "Home Assistant notify service, for example notify.mobile_app_alex_iphone.",
           "button_enabled": "Enables internal button control for clocking in and out.",
+          "button_trigger_type": "Choose whether a Home Assistant entity state or an MQTT topic triggers the button.",
           "button_entity": "Sensor or binary sensor that changes state when the button is pressed.",
+          "button_mqtt_topic": "MQTT topic that sends a message when the button is pressed, for example zigbee2mqtt/005_ikea_silber.",
+          "button_mqtt_json_key": "Optional JSON key whose value is used as the button press, for example action.",
           "button_valid_states": "Comma-separated states, for example on,single,press,toggle.",
           "button_cooldown_seconds": "Prevents duplicate triggers from repeated events."
         }

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import logging
 from datetime import datetime, timedelta
 from time import monotonic
@@ -24,6 +25,9 @@ from .const import (
     CONF_BUTTON_COOLDOWN_SECONDS,
     CONF_BUTTON_ENABLED,
     CONF_BUTTON_ENTITY,
+    CONF_BUTTON_MQTT_JSON_KEY,
+    CONF_BUTTON_MQTT_TOPIC,
+    CONF_BUTTON_TRIGGER_TYPE,
     CONF_BUTTON_VALID_STATES,
     CONF_OFFLINE_MINUTES,
     CONF_OFFLINE_STOP,
@@ -33,6 +37,7 @@ from .const import (
     CONF_START_BEFORE,
     CONF_WORKER_SENSOR,
     DEFAULT_BUTTON_COOLDOWN_SECONDS,
+    DEFAULT_BUTTON_TRIGGER_TYPE,
     DEFAULT_BUTTON_VALID_STATES,
 )
 from .coordinator import KimaiHomeofficeCoordinator
@@ -103,7 +108,7 @@ class KimaiHomeofficeAutomation:
 
     async def async_initialize(self) -> None:
         self._setup_worker_sensor_listener()
-        self._setup_button_listener()
+        await self._async_setup_button_listener()
         await self._async_schedule_safety_stop()
 
     def async_remove(self) -> None:
@@ -128,9 +133,19 @@ class KimaiHomeofficeAutomation:
             self._async_worker_state_changed,
         )
 
-    def _setup_button_listener(self) -> None:
+    async def _async_setup_button_listener(self) -> None:
+        if not self._button_enabled:
+            return
+
+        if self._button_trigger_type == "mqtt":
+            await self._async_setup_mqtt_button_listener()
+            return
+
+        self._setup_entity_button_listener()
+
+    def _setup_entity_button_listener(self) -> None:
         button_entity = self._button_entity
-        if not self._button_enabled or not button_entity:
+        if not button_entity:
             return
 
         self._button_unsub = async_track_state_change_event(
@@ -139,6 +154,26 @@ class KimaiHomeofficeAutomation:
             self._async_button_state_changed,
         )
         _LOGGER.debug("Button listener registered for %s", button_entity)
+
+    async def _async_setup_mqtt_button_listener(self) -> None:
+        topic = self._button_mqtt_topic
+        if not topic:
+            _LOGGER.debug("Button state ignored: MQTT topic is missing")
+            return
+
+        try:
+            from homeassistant.components import mqtt
+
+            self._button_unsub = await mqtt.async_subscribe(
+                self.hass,
+                topic,
+                self._mqtt_button_message,
+            )
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("MQTT button listener could not be registered: %s", err)
+            return
+
+        _LOGGER.debug("Button listener registered for MQTT topic %s", topic)
 
     def _cancel_offline_timer(self) -> None:
         if self._offline_unsub:
@@ -189,6 +224,23 @@ class KimaiHomeofficeAutomation:
     @property
     def _button_entity(self) -> str | None:
         return self.entry.options.get(CONF_BUTTON_ENTITY) or None
+
+    @property
+    def _button_trigger_type(self) -> str:
+        return str(
+            self.entry.options.get(
+                CONF_BUTTON_TRIGGER_TYPE,
+                DEFAULT_BUTTON_TRIGGER_TYPE,
+            )
+        )
+
+    @property
+    def _button_mqtt_topic(self) -> str | None:
+        return self.entry.options.get(CONF_BUTTON_MQTT_TOPIC) or None
+
+    @property
+    def _button_mqtt_json_key(self) -> str | None:
+        return self.entry.options.get(CONF_BUTTON_MQTT_JSON_KEY) or None
 
     @property
     def _button_valid_states(self) -> set[str]:
@@ -246,12 +298,46 @@ class KimaiHomeofficeAutomation:
             _LOGGER.debug("Button state ignored: new state is missing")
             return
 
-        state = str(new_state.state).strip()
-        if state.lower() in {STATE_UNKNOWN, STATE_UNAVAILABLE, "none", ""}:
+        await self._async_handle_button_value(new_state.state)
+
+    @callback
+    def _mqtt_button_message(self, message) -> None:
+        self.hass.async_create_task(self._async_handle_mqtt_button_message(message))
+
+    async def _async_handle_mqtt_button_message(self, message) -> None:
+        value = self._mqtt_button_value(message.payload)
+        await self._async_handle_button_value(value)
+
+    def _mqtt_button_value(self, payload) -> str | None:
+        text = payload.decode() if isinstance(payload, bytes) else str(payload)
+        json_key = self._button_mqtt_json_key
+        if not json_key:
+            return text
+
+        try:
+            data = json.loads(text)
+        except json.JSONDecodeError:
+            _LOGGER.debug("Button state ignored: MQTT payload is not valid JSON")
+            return None
+
+        if not isinstance(data, dict) or json_key not in data:
+            _LOGGER.debug("Button state ignored: MQTT JSON key is missing")
+            return None
+
+        return str(data[json_key])
+
+    async def _async_handle_button_value(self, value) -> None:
+        if value is None:
+            _LOGGER.debug("Button state ignored: value is missing")
+            return
+
+        state = str(value).strip()
+        normalized_state = state.lower()
+        if normalized_state in {STATE_UNKNOWN, STATE_UNAVAILABLE, "none", ""}:
             _LOGGER.debug("Button state ignored: %s", state)
             return
 
-        if state.lower() not in self._button_valid_states:
+        if normalized_state not in self._button_valid_states:
             _LOGGER.debug("Button state ignored: %s", state)
             return
 

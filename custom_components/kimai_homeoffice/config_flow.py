@@ -22,6 +22,9 @@ from .const import (
     CONF_BUTTON_COOLDOWN_SECONDS,
     CONF_BUTTON_ENABLED,
     CONF_BUTTON_ENTITY,
+    CONF_BUTTON_MQTT_JSON_KEY,
+    CONF_BUTTON_MQTT_TOPIC,
+    CONF_BUTTON_TRIGGER_TYPE,
     CONF_BUTTON_VALID_STATES,
     CONF_NOTIFY,
     CONF_NOTIFY_SERVICE,
@@ -37,6 +40,7 @@ from .const import (
     DEFAULT_AUTO_START,
     DEFAULT_BUTTON_COOLDOWN_SECONDS,
     DEFAULT_BUTTON_ENABLED,
+    DEFAULT_BUTTON_TRIGGER_TYPE,
     DEFAULT_BUTTON_VALID_STATES,
     DEFAULT_NOTIFY,
     DEFAULT_OFFLINE_MINUTES,
@@ -336,6 +340,17 @@ class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
                     default=options.get(CONF_BUTTON_ENABLED, DEFAULT_BUTTON_ENABLED),
                 ): bool,
                 vol.Optional(
+                    CONF_BUTTON_TRIGGER_TYPE,
+                    default=options.get(
+                        CONF_BUTTON_TRIGGER_TYPE,
+                        DEFAULT_BUTTON_TRIGGER_TYPE,
+                    ),
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["entity", "mqtt"],
+                    )
+                ),
+                vol.Optional(
                     CONF_BUTTON_ENTITY,
                     default=options.get(CONF_BUTTON_ENTITY, ""),
                 ): selector.EntitySelector(
@@ -343,6 +358,14 @@ class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
                         domain=["sensor", "binary_sensor", "input_button"],
                     )
                 ),
+                vol.Optional(
+                    CONF_BUTTON_MQTT_TOPIC,
+                    default=options.get(CONF_BUTTON_MQTT_TOPIC, ""),
+                ): str,
+                vol.Optional(
+                    CONF_BUTTON_MQTT_JSON_KEY,
+                    default=options.get(CONF_BUTTON_MQTT_JSON_KEY, ""),
+                ): str,
                 vol.Optional(
                     CONF_BUTTON_VALID_STATES,
                     default=options.get(

@@ -53,7 +53,10 @@
           "notify": "Benachrichtigung nach Ausstempeln",
           "notify_service": "Notify-Dienst",
           "button_enabled": "Button-Steuerung aktivieren",
+          "button_trigger_type": "Button-Auslöser",
           "button_entity": "Button-Entity",
+          "button_mqtt_topic": "Button-MQTT-Topic",
+          "button_mqtt_json_key": "Button-MQTT-JSON-Key",
           "button_valid_states": "Gültige Tastendrücke",
           "button_cooldown_seconds": "Sperrzeit nach Tastendruck"
         },
@@ -69,7 +72,10 @@
           "notify": "Sendet nach dem automatischen Ausstempeln eine Benachrichtigung.",
           "notify_service": "Home-Assistant-Notify-Dienst, z. B. notify.mobile_app_alex_iphone.",
           "button_enabled": "Aktiviert die interne Button-Steuerung für Kommen und Gehen.",
+          "button_trigger_type": "Wähle, ob ein Home-Assistant-Entity-Status oder ein MQTT-Topic den Button auslöst.",
           "button_entity": "Sensor oder Binary Sensor, der beim Tastendruck seinen Zustand ändert.",
+          "button_mqtt_topic": "MQTT-Topic, das beim Tastendruck eine Nachricht sendet, z. B. zigbee2mqtt/005_ikea_silber.",
+          "button_mqtt_json_key": "Optionaler JSON-Schlüssel, dessen Wert als Tastendruck gelesen wird, z. B. action.",
           "button_valid_states": "Kommagetrennte Zustände, z. B. on,single,press,toggle.",
           "button_cooldown_seconds": "Verhindert doppelte Auslösung bei mehrfachen Events."
         }

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.1 - 2026-06-20
+
+### Added
+- Added MQTT trigger mode for universal button support
+- Added configurable MQTT topic for button presses
+- Added optional JSON key extraction for MQTT payloads
+
+### Fixed
+- Support Zigbee2MQTT buttons that expose actions only through MQTT payloads
+
 ## 0.3.0 - 2026-06-19
 
 ### Added
