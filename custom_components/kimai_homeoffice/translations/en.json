@@ -69,8 +69,8 @@
           "offline_minutes": "Number of minutes to wait before clocking out after the sensor goes offline.",
           "safety_stop": "Stops the running Kimai time entry at a fixed time each day.",
           "safety_stop_time": "Time for the safety stop in HH:MM format.",
-          "notify": "Sends a notification after automatic clock-out.",
-          "notify_service": "Home Assistant notify service, for example notify.mobile_app_alex_iphone.",
+          "notify": "Sends a notification after every successful clock-out.",
+          "notify_service": "Home Assistant notify service, for example notify.mobile_app_phone.",
           "button_enabled": "Enables internal button control for clocking in and out.",
           "button_trigger_type": "Choose whether a Home Assistant entity state or an MQTT topic triggers the button.",
           "button_entity": "Sensor or binary sensor that changes state when the button is pressed.",
@@ -84,6 +84,7 @@
     "error": {
       "invalid_time": "Invalid time format. Please use HH:MM.",
       "invalid_time_range": "Start and end time must not be equal.",
+      "invalid_notify_service": "Enter a valid notify service in the format notify.service_name.",
       "required": "This field is required."
     }
   }

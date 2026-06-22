@@ -56,6 +56,7 @@ from .kimai_api import KimaiApi, KimaiApiError, KimaiAuthError, KimaiConnectionE
 _LOGGER = logging.getLogger(__name__)
 
 TIME_PATTERN = re.compile(r"^([01]\d|2[0-3]):[0-5]\d$")
+NOTIFY_SERVICE_PATTERN = re.compile(r"^notify\.[a-z0-9_]+$")
 
 
 def _is_hhmm(value: Any) -> bool:
@@ -66,6 +67,14 @@ def _is_hhmm(value: Any) -> bool:
 def _parse_hhmm(value: str):
     """Parse a strict HH:MM time string."""
     return datetime.strptime(value, "%H:%M").time()
+
+
+def _normalize_notify_service(value: Any) -> str:
+    """Normalize a Home Assistant notify service value."""
+    notify_service = str(value or "").strip()
+    while notify_service.startswith("notify_service."):
+        notify_service = notify_service.removeprefix("notify_service.")
+    return notify_service
 
 
 class KimaiHomeofficeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -265,8 +274,17 @@ class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
         options = self._config_entry.options
 
         if user_input is not None:
-            if user_input.get(CONF_NOTIFY) and not user_input.get(CONF_NOTIFY_SERVICE):
+            notify_service = _normalize_notify_service(
+                user_input.get(CONF_NOTIFY_SERVICE)
+            )
+            user_input[CONF_NOTIFY_SERVICE] = notify_service
+
+            if user_input.get(CONF_NOTIFY) and not notify_service:
                 errors[CONF_NOTIFY_SERVICE] = "required"
+            elif notify_service and not NOTIFY_SERVICE_PATTERN.fullmatch(
+                notify_service
+            ):
+                errors[CONF_NOTIFY_SERVICE] = "invalid_notify_service"
 
             if user_input.get(CONF_BUTTON_ENABLED):
                 trigger_type = user_input.get(

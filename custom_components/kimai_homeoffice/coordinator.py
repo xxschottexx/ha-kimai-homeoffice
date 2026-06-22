@@ -67,48 +67,59 @@ class KimaiHomeofficeCoordinator(DataUpdateCoordinator[KimaiSummary]):
         )
         await self.async_request_refresh()
 
-    async def async_stop(self) -> None:
-        """Stop active Kimai timesheet."""
-        await self.api.stop_timesheet()
-        await self.async_request_refresh()
+    async def async_stop(self) -> bool:
+        """Stop an active Kimai timesheet and report whether it was stopped."""
+        stopped = await self.api.stop_timesheet()
+        if not stopped:
+            return False
+
+        try:
+            await self.async_request_refresh()
+        except Exception as err:  # noqa: BLE001
+            _LOGGER.warning("Kimai data refresh after clock-out failed: %s", err)
 
         if self._should_send_notification():
             await self._async_send_stop_notification()
 
+        return True
+
     def _should_send_notification(self) -> bool:
         return bool(
             self.entry.options.get(CONF_NOTIFY, False)
-            and self.entry.options.get(CONF_NOTIFY_SERVICE)
+            and self._notify_service
         )
 
+    @property
+    def _notify_service(self) -> str:
+        notify_service = str(
+            self.entry.options.get(CONF_NOTIFY_SERVICE, "")
+        ).strip()
+        while notify_service.startswith("notify_service."):
+            notify_service = notify_service.removeprefix("notify_service.")
+        return notify_service
+
     async def _async_send_stop_notification(self) -> None:
-        notify_service = self.entry.options.get(CONF_NOTIFY_SERVICE)
-        if not notify_service or "." not in notify_service:
+        notify_service = self._notify_service
+        if not notify_service.startswith("notify."):
             _LOGGER.warning(
                 "Notify service ist ungültig oder fehlt: %s",
                 notify_service,
             )
             return
 
-        if self.data is None:
-            _LOGGER.warning("Keine Kimai-Daten zum Senden der Benachrichtigung")
-            return
-
-        today = self.format_seconds(self.data.today_seconds)
-        week = self.format_seconds(self.data.week_seconds)
-        month = self.format_seconds(self.data.month_seconds)
-
         domain, service = notify_service.split(".", 1)
-        message = (
-            f"Heute: {today} | Woche: {week} | Monat: {month}"
-        )
+        message = "Ausgestempelt."
+        today_seconds = getattr(self.data, "today_seconds", None)
+        if today_seconds is not None:
+            today = self.format_seconds(today_seconds)
+            message = f"Ausgestempelt. Heute gearbeitet: {today}"
 
         try:
-            self.hass.services.async_call(
+            await self.hass.services.async_call(
                 domain,
                 service,
                 {
-                    "title": "Homeoffice beendet",
+                    "title": "Daimler Homeoffice",
                     "message": message,
                 },
                 blocking=False,

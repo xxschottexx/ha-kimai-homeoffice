@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.3.2 - 2026-06-22
+
+### Fixed
+- Send notification after every successful clock-out, including manual buttons and MQTT button triggers
+- Normalize notify service values like notify_service.notify.mobile_app_* to notify.mobile_app_*
+
+### Improved
+- Improved clock-out notification behavior
+
 ## 0.3.1 - 2026-06-20
 
 ### Added

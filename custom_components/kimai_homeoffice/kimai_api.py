@@ -244,20 +244,21 @@ class KimaiApi:
     async def stop_timesheet(
         self,
         timesheet_id: int | None = None,
-    ) -> dict[str, Any] | None:
-        """Stop a Kimai timesheet."""
+    ) -> bool:
+        """Stop a Kimai timesheet and return whether one was stopped."""
         if timesheet_id is None or int(timesheet_id) <= 0:
             active = await self.active_timesheet()
 
             if not active:
-                return None
+                return False
 
             timesheet_id = int(active["id"])
 
-        return await self._request(
+        await self._request(
             "PATCH",
             f"/api/timesheets/{int(timesheet_id)}/stop",
         )
+        return True
 
     async def get_timesheets(
         self,

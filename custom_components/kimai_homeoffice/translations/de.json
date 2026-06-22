@@ -69,8 +69,8 @@
           "offline_minutes": "Wartezeit in Minuten, bevor nach Offline-Erkennung ausgestempelt wird.",
           "safety_stop": "Stoppt die laufende Kimai-Zeitbuchung täglich zu einer festen Uhrzeit.",
           "safety_stop_time": "Uhrzeit für den Sicherheits-Stopp im Format HH:MM.",
-          "notify": "Sendet nach dem automatischen Ausstempeln eine Benachrichtigung.",
-          "notify_service": "Home-Assistant-Notify-Dienst, z. B. notify.mobile_app_alex_iphone.",
+          "notify": "Sendet nach jedem erfolgreichen Ausstempeln eine Benachrichtigung.",
+          "notify_service": "Home-Assistant-Notify-Dienst, z. B. notify.mobile_app_phone.",
           "button_enabled": "Aktiviert die interne Button-Steuerung für Kommen und Gehen.",
           "button_trigger_type": "Wähle, ob ein Home-Assistant-Entity-Status oder ein MQTT-Topic den Button auslöst.",
           "button_entity": "Sensor oder Binary Sensor, der beim Tastendruck seinen Zustand ändert.",
@@ -84,6 +84,7 @@
     "error": {
       "invalid_time": "Ungültiges Zeitformat. Bitte HH:MM verwenden.",
       "invalid_time_range": "Start- und Endzeit dürfen nicht gleich sein.",
+      "invalid_notify_service": "Bitte einen gültigen Notify-Dienst im Format notify.dienstname eingeben.",
       "required": "Dieses Feld ist erforderlich."
     }
   }
