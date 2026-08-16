@@ -76,6 +76,14 @@ async def async_setup_entry(
         KimaiHomeofficeSensor(
             coordinator,
             entry,
+            "runtime",
+            "Laufzeit",
+            "mdi:timer-outline",
+            lambda data: _seconds_to_hhmm(data.active_seconds),
+        ),
+        KimaiHomeofficeSensor(
+            coordinator,
+            entry,
             "today",
             "Heute",
             "mdi:clock-outline",
