@@ -53,6 +53,8 @@
           "notify": "Benachrichtigung nach Ausstempeln",
           "notify_service": "Notify-Dienst",
           "daily_goal_enabled": "Tagesziel aktivieren",
+          "daily_goal_mode": "Tagesziel-Modus",
+          "daily_goal_entity": "Manuelles Tagesziel Entity",
           "daily_goal_hours": "Tagesziel Stunden",
           "daily_goal_minutes": "Tagesziel Minuten",
           "weekly_goal_enabled": "Wochenziel aktivieren",
@@ -89,7 +91,9 @@
           "button_cooldown_seconds": "Verhindert doppelte Auslösung bei mehrfachen Events.",
           "rounding_enabled": "Rundet die angezeigten Arbeitszeiten und daraus berechneten Salden.",
           "rounding_minutes": "Intervall der Zeitrundung in Minuten.",
-          "rounding_mode": "Legt fest, ob Arbeitszeiten auf-, ab- oder zum nächsten Wert gerundet werden."
+          "rounding_mode": "Legt fest, ob Arbeitszeiten auf-, ab- oder zum nächsten Wert gerundet werden.",
+          "daily_goal_mode": "Legt fest, wann ein Tagesziel berechnet wird.",
+          "daily_goal_entity": "Entity, die das Tagesziel in Stunden liefert, z. B. input_number.homeoffice_tagesziel_heute."
         }
       }
     },
@@ -101,6 +105,14 @@
     }
   },
   "selector": {
+    "daily_goal_mode": {
+      "options": {
+        "disabled": "Aus",
+        "fixed": "Festes Tagesziel",
+        "worked_days_only": "Nur an Homeoffice-Tagen",
+        "manual_entity": "Manuelles Tagesziel"
+      }
+    },
     "rounding_mode": {
       "options": {
         "ceil": "Aufrunden",

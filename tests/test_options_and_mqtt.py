@@ -51,6 +51,7 @@ class OptionsDefaultsTest(TestCase):
         self.assertTrue(defaults["DEFAULT_DAILY_GOAL_ENABLED"])
         self.assertEqual(defaults["DEFAULT_DAILY_GOAL_HOURS"], 7)
         self.assertEqual(defaults["DEFAULT_DAILY_GOAL_MINUTES"], 0)
+        self.assertEqual(defaults["DEFAULT_DAILY_GOAL_MODE"], "fixed")
         self.assertTrue(defaults["DEFAULT_WEEKLY_GOAL_ENABLED"])
         self.assertEqual(defaults["DEFAULT_WEEKLY_GOAL_HOURS"], 35)
         self.assertEqual(defaults["DEFAULT_WEEKLY_GOAL_MINUTES"], 0)
