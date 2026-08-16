@@ -34,6 +34,9 @@ from .const import (
     CONF_OFFLINE_MINUTES,
     CONF_OFFLINE_STOP,
     CONF_PROJECT_ID,
+    CONF_ROUNDING_ENABLED,
+    CONF_ROUNDING_MINUTES,
+    CONF_ROUNDING_MODE,
     CONF_WORKER_SENSOR,
     CONF_SAFETY_STOP,
     CONF_SAFETY_STOP_TIME,
@@ -54,6 +57,9 @@ from .const import (
     DEFAULT_NOTIFY,
     DEFAULT_OFFLINE_MINUTES,
     DEFAULT_OFFLINE_STOP,
+    DEFAULT_ROUNDING_ENABLED,
+    DEFAULT_ROUNDING_MINUTES,
+    DEFAULT_ROUNDING_MODE,
     DEFAULT_SAFETY_STOP,
     DEFAULT_START_AFTER,
     DEFAULT_START_BEFORE,
@@ -439,6 +445,32 @@ class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
                         DEFAULT_WEEKLY_GOAL_MINUTES,
                     ),
                 ): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)),
+                vol.Optional(
+                    CONF_ROUNDING_ENABLED,
+                    default=form_options.get(
+                        CONF_ROUNDING_ENABLED,
+                        DEFAULT_ROUNDING_ENABLED,
+                    ),
+                ): bool,
+                vol.Optional(
+                    CONF_ROUNDING_MINUTES,
+                    default=form_options.get(
+                        CONF_ROUNDING_MINUTES,
+                        DEFAULT_ROUNDING_MINUTES,
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=1, max=60)),
+                vol.Optional(
+                    CONF_ROUNDING_MODE,
+                    default=form_options.get(
+                        CONF_ROUNDING_MODE,
+                        DEFAULT_ROUNDING_MODE,
+                    ),
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=["ceil", "floor", "nearest"],
+                        translation_key="rounding_mode",
+                    )
+                ),
                 vol.Optional(
                     CONF_BUTTON_ENABLED,
                     default=form_options.get(

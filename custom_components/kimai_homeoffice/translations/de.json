@@ -58,6 +58,9 @@
           "weekly_goal_enabled": "Wochenziel aktivieren",
           "weekly_goal_hours": "Wochenziel Stunden",
           "weekly_goal_minutes": "Wochenziel Minuten",
+          "rounding_enabled": "Zeitrundung aktivieren",
+          "rounding_minutes": "Rundung Minuten",
+          "rounding_mode": "Rundungsart",
           "button_enabled": "Button-Steuerung aktivieren",
           "button_trigger_type": "Button-Auslöser",
           "button_entity": "Button-Entity",
@@ -83,7 +86,10 @@
           "button_mqtt_topic": "MQTT-Topic, das beim Tastendruck eine Nachricht sendet, z. B. zigbee2mqtt/005_ikea_silber.",
           "button_mqtt_json_key": "Optionaler JSON-Schlüssel, dessen Wert als Tastendruck gelesen wird, z. B. action.",
           "button_valid_states": "Kommagetrennte Zustände, z. B. on,single,press,toggle.",
-          "button_cooldown_seconds": "Verhindert doppelte Auslösung bei mehrfachen Events."
+          "button_cooldown_seconds": "Verhindert doppelte Auslösung bei mehrfachen Events.",
+          "rounding_enabled": "Rundet die angezeigten Arbeitszeiten und daraus berechneten Salden.",
+          "rounding_minutes": "Intervall der Zeitrundung in Minuten.",
+          "rounding_mode": "Legt fest, ob Arbeitszeiten auf-, ab- oder zum nächsten Wert gerundet werden."
         }
       }
     },
@@ -92,6 +98,15 @@
       "invalid_time_range": "Start- und Endzeit dürfen nicht gleich sein.",
       "invalid_notify_service": "Bitte einen gültigen Notify-Dienst im Format notify.dienstname eingeben.",
       "required": "Dieses Feld ist erforderlich."
+    }
+  },
+  "selector": {
+    "rounding_mode": {
+      "options": {
+        "ceil": "Aufrunden",
+        "floor": "Abrunden",
+        "nearest": "Nächster Wert"
+      }
     }
   },
   "entity": {

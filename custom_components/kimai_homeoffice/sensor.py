@@ -17,12 +17,18 @@ from .const import (
     CONF_DAILY_GOAL_ENABLED,
     CONF_DAILY_GOAL_HOURS,
     CONF_DAILY_GOAL_MINUTES,
+    CONF_ROUNDING_ENABLED,
+    CONF_ROUNDING_MINUTES,
+    CONF_ROUNDING_MODE,
     CONF_WEEKLY_GOAL_ENABLED,
     CONF_WEEKLY_GOAL_HOURS,
     CONF_WEEKLY_GOAL_MINUTES,
     DEFAULT_DAILY_GOAL_ENABLED,
     DEFAULT_DAILY_GOAL_HOURS,
     DEFAULT_DAILY_GOAL_MINUTES,
+    DEFAULT_ROUNDING_ENABLED,
+    DEFAULT_ROUNDING_MINUTES,
+    DEFAULT_ROUNDING_MODE,
     DEFAULT_WEEKLY_GOAL_ENABLED,
     DEFAULT_WEEKLY_GOAL_HOURS,
     DEFAULT_WEEKLY_GOAL_MINUTES,
@@ -64,6 +70,24 @@ def _remaining_seconds(worked_seconds: int, goal_seconds: int) -> int:
 def _goal_seconds(hours: int, minutes: int) -> int:
     """Convert goal hours and minutes to seconds."""
     return (int(hours) * 60 + int(minutes)) * 60
+
+
+def _round_seconds(seconds: int, rounding_minutes: int, mode: str) -> int:
+    """Round positive seconds to the configured minute interval."""
+    seconds = int(seconds)
+    rounding_minutes = int(rounding_minutes)
+    if seconds <= 0:
+        return 0
+    if rounding_minutes <= 0:
+        return seconds
+
+    step = rounding_minutes * 60
+    if mode == "floor":
+        return seconds // step * step
+    if mode == "nearest":
+        return (seconds + step // 2) // step * step
+
+    return (seconds + step - 1) // step * step
 
 
 def _daily_goal_reached_at(data: KimaiSummary, goal_seconds: int) -> str | None:
@@ -157,6 +181,21 @@ async def async_setup_entry(
         entry.options.get(CONF_WEEKLY_GOAL_HOURS, DEFAULT_WEEKLY_GOAL_HOURS),
         entry.options.get(CONF_WEEKLY_GOAL_MINUTES, DEFAULT_WEEKLY_GOAL_MINUTES),
     )
+    rounding_enabled = bool(
+        entry.options.get(CONF_ROUNDING_ENABLED, DEFAULT_ROUNDING_ENABLED)
+    )
+    rounding_minutes = int(
+        entry.options.get(CONF_ROUNDING_MINUTES, DEFAULT_ROUNDING_MINUTES)
+    )
+    rounding_mode = str(
+        entry.options.get(CONF_ROUNDING_MODE, DEFAULT_ROUNDING_MODE)
+    )
+
+    def displayed_seconds(seconds: int) -> int:
+        """Return raw or configured rounded seconds for display."""
+        if not rounding_enabled:
+            return seconds
+        return _round_seconds(seconds, rounding_minutes, rounding_mode)
     _LOGGER.debug(
         "Goal sensors updated with daily goal %s and weekly goal %s",
         _seconds_to_hhmm(daily_goal_seconds),
@@ -189,7 +228,7 @@ async def async_setup_entry(
             None,
             "mdi:scale-balance",
             lambda data: _seconds_to_signed_hhmm(
-                data.today_seconds - daily_goal_seconds
+                displayed_seconds(data.today_seconds) - daily_goal_seconds
             ),
             translation_key="daily_balance",
             available_fn=lambda data: daily_goal_enabled,
@@ -201,7 +240,10 @@ async def async_setup_entry(
             None,
             "mdi:timer-sand",
             lambda data: _seconds_to_hhmm(
-                _remaining_seconds(data.today_seconds, daily_goal_seconds)
+                _remaining_seconds(
+                    displayed_seconds(data.today_seconds),
+                    daily_goal_seconds,
+                )
             ),
             translation_key="daily_remaining",
             available_fn=lambda data: daily_goal_enabled,
@@ -234,7 +276,7 @@ async def async_setup_entry(
             None,
             "mdi:calendar-clock",
             lambda data: _seconds_to_signed_hhmm(
-                data.week_seconds - weekly_goal_seconds
+                displayed_seconds(data.week_seconds) - weekly_goal_seconds
             ),
             translation_key="weekly_balance",
             available_fn=lambda data: weekly_goal_enabled,
@@ -245,7 +287,7 @@ async def async_setup_entry(
             "today",
             "Heute",
             "mdi:clock-outline",
-            lambda data: _seconds_to_hhmm(data.today_seconds),
+            lambda data: _seconds_to_hhmm(displayed_seconds(data.today_seconds)),
         ),
         KimaiHomeofficeSensor(
             coordinator,
@@ -253,7 +295,7 @@ async def async_setup_entry(
             "week",
             "Woche",
             "mdi:calendar-week",
-            lambda data: _seconds_to_hhmm(data.week_seconds),
+            lambda data: _seconds_to_hhmm(displayed_seconds(data.week_seconds)),
         ),
         KimaiHomeofficeSensor(
             coordinator,
@@ -261,7 +303,7 @@ async def async_setup_entry(
             "month",
             "Monat",
             "mdi:calendar-month",
-            lambda data: _seconds_to_hhmm(data.month_seconds),
+            lambda data: _seconds_to_hhmm(displayed_seconds(data.month_seconds)),
         ),
         KimaiHomeofficeSensor(
             coordinator,
