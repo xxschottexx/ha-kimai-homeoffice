@@ -110,7 +110,8 @@
         "disabled": "Aus",
         "fixed": "Festes Tagesziel",
         "worked_days_only": "Nur an Homeoffice-Tagen",
-        "manual_entity": "Manuelles Tagesziel"
+        "manual_entity": "Manuelles Tagesziel",
+        "weekly_plan": "Wochenplanung"
       }
     },
     "rounding_mode": {
@@ -122,6 +123,28 @@
     }
   },
   "entity": {
+    "switch": {
+      "planned_monday": {
+        "name": "Montag geplant"
+      },
+      "planned_tuesday": {
+        "name": "Dienstag geplant"
+      },
+      "planned_wednesday": {
+        "name": "Mittwoch geplant"
+      },
+      "planned_thursday": {
+        "name": "Donnerstag geplant"
+      },
+      "planned_friday": {
+        "name": "Freitag geplant"
+      }
+    },
+    "number": {
+      "daily_goal_today": {
+        "name": "Tagesziel heute"
+      }
+    },
     "sensor": {
       "daily_goal": {
         "name": "Tagesziel"

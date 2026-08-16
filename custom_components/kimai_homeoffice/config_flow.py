@@ -434,6 +434,7 @@ class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
                             "fixed",
                             "worked_days_only",
                             "manual_entity",
+                            "weekly_plan",
                         ],
                         translation_key="daily_goal_mode",
                     )

@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import timedelta
 import logging
-from math import isfinite
 from typing import Any, Callable
 
 from homeassistant.components.sensor import SensorEntity
@@ -21,6 +20,13 @@ from .const import (
     CONF_DAILY_GOAL_HOURS,
     CONF_DAILY_GOAL_MINUTES,
     CONF_DAILY_GOAL_MODE,
+    CONF_MANUAL_DAILY_GOAL_DATE,
+    CONF_MANUAL_DAILY_GOAL_HOURS,
+    CONF_PLANNED_FRIDAY,
+    CONF_PLANNED_MONDAY,
+    CONF_PLANNED_THURSDAY,
+    CONF_PLANNED_TUESDAY,
+    CONF_PLANNED_WEDNESDAY,
     CONF_ROUNDING_ENABLED,
     CONF_ROUNDING_MINUTES,
     CONF_ROUNDING_MODE,
@@ -37,12 +43,12 @@ from .const import (
     DEFAULT_WEEKLY_GOAL_ENABLED,
     DEFAULT_WEEKLY_GOAL_HOURS,
     DEFAULT_WEEKLY_GOAL_MINUTES,
-    DAILY_GOAL_MODE_DISABLED,
     DAILY_GOAL_MODE_MANUAL_ENTITY,
-    DAILY_GOAL_MODE_WORKED_DAYS_ONLY,
+    DAILY_GOAL_MODE_WEEKLY_PLAN,
     DOMAIN,
 )
 from .coordinator import KimaiHomeofficeCoordinator
+from .daily_goal import resolve_daily_goal_seconds
 from .kimai_api import KimaiSummary
 
 _LOGGER = logging.getLogger(__name__)
@@ -96,42 +102,6 @@ def _round_seconds(seconds: int, rounding_minutes: int, mode: str) -> int:
         return (seconds + step // 2) // step * step
 
     return (seconds + step - 1) // step * step
-
-
-def _manual_goal_seconds(value: Any) -> int | None:
-    """Convert a decimal-hours entity state to goal seconds."""
-    try:
-        hours = float(value)
-    except (TypeError, ValueError):
-        return None
-
-    if not isfinite(hours) or hours < 0:
-        return None
-
-    return int(hours * 3600)
-
-
-def _resolve_daily_goal_seconds(
-    mode: str,
-    enabled: bool,
-    fixed_seconds: int,
-    today_seconds: int,
-    active_id: int,
-    manual_state: Any = None,
-) -> int | None:
-    """Resolve the applicable daily goal for the selected mode."""
-    if not enabled or mode == DAILY_GOAL_MODE_DISABLED:
-        return None
-
-    if mode == DAILY_GOAL_MODE_WORKED_DAYS_ONLY:
-        if today_seconds <= 0 and active_id <= 0:
-            return None
-        return fixed_seconds
-
-    if mode == DAILY_GOAL_MODE_MANUAL_ENTITY:
-        return _manual_goal_seconds(manual_state)
-
-    return fixed_seconds
 
 
 def _daily_goal_reached_at(
@@ -247,6 +217,13 @@ async def async_setup_entry(
     rounding_mode = str(
         entry.options.get(CONF_ROUNDING_MODE, DEFAULT_ROUNDING_MODE)
     )
+    planned_day_options = (
+        CONF_PLANNED_MONDAY,
+        CONF_PLANNED_TUESDAY,
+        CONF_PLANNED_WEDNESDAY,
+        CONF_PLANNED_THURSDAY,
+        CONF_PLANNED_FRIDAY,
+    )
 
     def displayed_seconds(seconds: int) -> int:
         """Return raw or configured rounded seconds for display."""
@@ -272,13 +249,31 @@ async def async_setup_entry(
                 else:
                     manual_state = state.state
 
-        goal = _resolve_daily_goal_seconds(
+        today = dt_util.now().date()
+        planned_today = today.weekday() < len(planned_day_options) and bool(
+            entry.options.get(planned_day_options[today.weekday()], False)
+        )
+        manual_override_date = entry.options.get(CONF_MANUAL_DAILY_GOAL_DATE)
+        if (
+            daily_goal_mode == DAILY_GOAL_MODE_WEEKLY_PLAN
+            and manual_override_date
+            and manual_override_date != today.isoformat()
+        ):
+            _LOGGER.debug("Stale manual daily goal ignored")
+
+        goal = resolve_daily_goal_seconds(
             daily_goal_mode,
             daily_goal_enabled,
             fixed_daily_goal_seconds,
             data.today_seconds,
             data.active_id,
-            manual_state,
+            manual_state=manual_state,
+            planned_today=planned_today,
+            manual_override_hours=entry.options.get(
+                CONF_MANUAL_DAILY_GOAL_HOURS
+            ),
+            manual_override_date=manual_override_date,
+            current_date=today.isoformat(),
         )
         if (
             daily_goal_mode == DAILY_GOAL_MODE_MANUAL_ENTITY
@@ -288,6 +283,11 @@ async def async_setup_entry(
             _LOGGER.debug(
                 "Manual daily goal entity %s is not numeric",
                 daily_goal_entity,
+            )
+        if daily_goal_mode == DAILY_GOAL_MODE_WEEKLY_PLAN:
+            _LOGGER.debug(
+                "Weekly plan daily goal resolved: %s",
+                _seconds_to_hhmm(goal),
             )
         return goal
     _LOGGER.debug(
@@ -355,7 +355,7 @@ async def async_setup_entry(
                 displayed_seconds(data.today_seconds),
             ),
             translation_key="daily_goal_reached_at",
-            available_fn=lambda data: daily_goal_seconds(data) is not None
+            available_fn=lambda data: (daily_goal_seconds(data) or 0) > 0
             and (
                 displayed_seconds(data.today_seconds)
                 >= (daily_goal_seconds(data) or 0)

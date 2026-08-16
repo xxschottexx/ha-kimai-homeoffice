@@ -28,6 +28,13 @@ CONF_DAILY_GOAL_HOURS = "daily_goal_hours"
 CONF_DAILY_GOAL_MINUTES = "daily_goal_minutes"
 CONF_DAILY_GOAL_MODE = "daily_goal_mode"
 CONF_DAILY_GOAL_ENTITY = "daily_goal_entity"
+CONF_PLANNED_MONDAY = "planned_monday"
+CONF_PLANNED_TUESDAY = "planned_tuesday"
+CONF_PLANNED_WEDNESDAY = "planned_wednesday"
+CONF_PLANNED_THURSDAY = "planned_thursday"
+CONF_PLANNED_FRIDAY = "planned_friday"
+CONF_MANUAL_DAILY_GOAL_HOURS = "manual_daily_goal_hours"
+CONF_MANUAL_DAILY_GOAL_DATE = "manual_daily_goal_date"
 CONF_WEEKLY_GOAL_ENABLED = "weekly_goal_enabled"
 CONF_WEEKLY_GOAL_HOURS = "weekly_goal_hours"
 CONF_WEEKLY_GOAL_MINUTES = "weekly_goal_minutes"
@@ -77,9 +84,12 @@ DAILY_GOAL_MODE_DISABLED = "disabled"
 DAILY_GOAL_MODE_FIXED = "fixed"
 DAILY_GOAL_MODE_WORKED_DAYS_ONLY = "worked_days_only"
 DAILY_GOAL_MODE_MANUAL_ENTITY = "manual_entity"
+DAILY_GOAL_MODE_WEEKLY_PLAN = "weekly_plan"
 
 PLATFORMS = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
     Platform.BUTTON,
+    Platform.SWITCH,
+    Platform.NUMBER,
 ]
