@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.5 - 2026-08-16
+
+### Added
+- Added integrated weekly homeoffice planning
+- Added weekday planning switches for Monday to Friday
+- Added daily goal today number entity
+- Added weekly plan daily goal mode
+
+### Improved
+- Daily goal handling no longer requires external Home Assistant helpers
+- Irregular homeoffice schedules can now be planned directly from the integration
+
 ## 0.4.4 - 2026-08-16
 
 ### Added

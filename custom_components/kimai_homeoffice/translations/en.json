@@ -110,7 +110,8 @@
         "disabled": "Disabled",
         "fixed": "Fixed daily goal",
         "worked_days_only": "Homeoffice days only",
-        "manual_entity": "Manual daily goal"
+        "manual_entity": "Manual daily goal",
+        "weekly_plan": "Weekly plan"
       }
     },
     "rounding_mode": {
@@ -122,6 +123,28 @@
     }
   },
   "entity": {
+    "switch": {
+      "planned_monday": {
+        "name": "Monday planned"
+      },
+      "planned_tuesday": {
+        "name": "Tuesday planned"
+      },
+      "planned_wednesday": {
+        "name": "Wednesday planned"
+      },
+      "planned_thursday": {
+        "name": "Thursday planned"
+      },
+      "planned_friday": {
+        "name": "Friday planned"
+      }
+    },
+    "number": {
+      "daily_goal_today": {
+        "name": "Daily goal today"
+      }
+    },
     "sensor": {
       "daily_goal": {
         "name": "Daily goal"
