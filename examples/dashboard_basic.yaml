@@ -1,0 +1,54 @@
+# Replace entity IDs with your actual Home Assistant entity IDs if they differ.
+title: Kimai Homeoffice
+views:
+  - title: Homeoffice
+    path: homeoffice
+    icon: mdi:home-clock
+    cards:
+      - type: markdown
+        title: Uhrzeit
+        content: >-
+          ## {{ now().strftime('%H:%M') }}
+          **Status:** {{ 'Eingestempelt' if is_state('binary_sensor.kimai_homeoffice_eingestempelt', 'on') else 'Ausgestempelt' }}
+
+      - type: glance
+        title: Arbeitszeit
+        entities:
+          - entity: sensor.kimai_homeoffice_heute
+            name: Heute gearbeitet
+          - entity: sensor.kimai_homeoffice_laufzeit
+            name: Aktuelle Laufzeit
+          - entity: sensor.kimai_homeoffice_woche
+            name: Woche
+          - entity: sensor.kimai_homeoffice_monat
+            name: Monat
+          - entity: binary_sensor.kimai_homeoffice_eingestempelt
+            name: Status
+
+      - type: horizontal-stack
+        cards:
+          - type: button
+            name: Kommen
+            icon: mdi:login
+            tap_action:
+              action: perform-action
+              perform_action: button.press
+              target:
+                entity_id: button.kimai_homeoffice_kommen
+          - type: button
+            name: Gehen
+            icon: mdi:logout
+            tap_action:
+              action: perform-action
+              perform_action: button.press
+              target:
+                entity_id: button.kimai_homeoffice_gehen
+
+      - type: entities
+        title: Kimai Homeoffice
+        entities:
+          - binary_sensor.kimai_homeoffice_eingestempelt
+          - sensor.kimai_homeoffice_heute
+          - sensor.kimai_homeoffice_laufzeit
+          - sensor.kimai_homeoffice_woche
+          - sensor.kimai_homeoffice_monat

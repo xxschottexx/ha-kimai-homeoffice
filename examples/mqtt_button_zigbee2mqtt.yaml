@@ -1,0 +1,15 @@
+# Replace zigbee2mqtt/YOUR_BUTTON_NAME with your actual Zigbee2MQTT topic.
+alias: Kimai Homeoffice MQTT Button Toggle
+description: Toggles Kimai Homeoffice from a Zigbee2MQTT button.
+mode: single
+trigger:
+  - platform: mqtt
+    topic: zigbee2mqtt/YOUR_BUTTON_NAME
+condition:
+  - condition: template
+    value_template: >
+      {{ trigger.payload_json.action | default('') == 'on' }}
+action:
+  - service: button.press
+    target:
+      entity_id: button.kimai_homeoffice_toggle

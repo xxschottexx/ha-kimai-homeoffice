@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.3 - 2026-08-16
+
+### Added
+- Added dashboard examples
+- Added AWTRIX example automation
+- Added Zigbee2MQTT button automation example
+- Expanded README with setup, options, sensors and troubleshooting documentation
+
+### Improved
+- Improved documentation for HACS installation
+- Improved documentation for MQTT button setup
+- Improved documentation for dashboard integration
+- Improved documentation for time rounding
+
 ## 0.4.2 - 2026-08-16
 
 ### Added
