@@ -52,6 +52,12 @@
           "safety_stop_time": "Sicherheits-Stopp Uhrzeit",
           "notify": "Benachrichtigung nach Ausstempeln",
           "notify_service": "Notify-Dienst",
+          "daily_goal_enabled": "Tagesziel aktivieren",
+          "daily_goal_hours": "Tagesziel Stunden",
+          "daily_goal_minutes": "Tagesziel Minuten",
+          "weekly_goal_enabled": "Wochenziel aktivieren",
+          "weekly_goal_hours": "Wochenziel Stunden",
+          "weekly_goal_minutes": "Wochenziel Minuten",
           "button_enabled": "Button-Steuerung aktivieren",
           "button_trigger_type": "Button-Auslöser",
           "button_entity": "Button-Entity",
@@ -86,6 +92,28 @@
       "invalid_time_range": "Start- und Endzeit dürfen nicht gleich sein.",
       "invalid_notify_service": "Bitte einen gültigen Notify-Dienst im Format notify.dienstname eingeben.",
       "required": "Dieses Feld ist erforderlich."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "daily_goal": {
+        "name": "Tagesziel"
+      },
+      "daily_balance": {
+        "name": "Saldo heute"
+      },
+      "daily_remaining": {
+        "name": "Restzeit heute"
+      },
+      "daily_goal_reached_at": {
+        "name": "Ziel erreicht um"
+      },
+      "weekly_goal": {
+        "name": "Wochenziel"
+      },
+      "weekly_balance": {
+        "name": "Saldo Woche"
+      }
     }
   }
 }

@@ -26,6 +26,9 @@ from .const import (
     CONF_BUTTON_MQTT_TOPIC,
     CONF_BUTTON_TRIGGER_TYPE,
     CONF_BUTTON_VALID_STATES,
+    CONF_DAILY_GOAL_ENABLED,
+    CONF_DAILY_GOAL_HOURS,
+    CONF_DAILY_GOAL_MINUTES,
     CONF_NOTIFY,
     CONF_NOTIFY_SERVICE,
     CONF_OFFLINE_MINUTES,
@@ -36,18 +39,27 @@ from .const import (
     CONF_SAFETY_STOP_TIME,
     CONF_START_AFTER,
     CONF_START_BEFORE,
+    CONF_WEEKLY_GOAL_ENABLED,
+    CONF_WEEKLY_GOAL_HOURS,
+    CONF_WEEKLY_GOAL_MINUTES,
     DEFAULT_NAME,
     DEFAULT_AUTO_START,
     DEFAULT_BUTTON_COOLDOWN_SECONDS,
     DEFAULT_BUTTON_ENABLED,
     DEFAULT_BUTTON_TRIGGER_TYPE,
     DEFAULT_BUTTON_VALID_STATES,
+    DEFAULT_DAILY_GOAL_ENABLED,
+    DEFAULT_DAILY_GOAL_HOURS,
+    DEFAULT_DAILY_GOAL_MINUTES,
     DEFAULT_NOTIFY,
     DEFAULT_OFFLINE_MINUTES,
     DEFAULT_OFFLINE_STOP,
     DEFAULT_SAFETY_STOP,
     DEFAULT_START_AFTER,
     DEFAULT_START_BEFORE,
+    DEFAULT_WEEKLY_GOAL_ENABLED,
+    DEFAULT_WEEKLY_GOAL_HOURS,
+    DEFAULT_WEEKLY_GOAL_MINUTES,
     DEFAULT_SAFETY_STOP_TIME,
     DOMAIN,
 )
@@ -385,6 +397,48 @@ class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
                     CONF_NOTIFY_SERVICE,
                     default=form_options.get(CONF_NOTIFY_SERVICE, ""),
                 ): str,
+                vol.Optional(
+                    CONF_DAILY_GOAL_ENABLED,
+                    default=form_options.get(
+                        CONF_DAILY_GOAL_ENABLED,
+                        DEFAULT_DAILY_GOAL_ENABLED,
+                    ),
+                ): bool,
+                vol.Optional(
+                    CONF_DAILY_GOAL_HOURS,
+                    default=form_options.get(
+                        CONF_DAILY_GOAL_HOURS,
+                        DEFAULT_DAILY_GOAL_HOURS,
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=24)),
+                vol.Optional(
+                    CONF_DAILY_GOAL_MINUTES,
+                    default=form_options.get(
+                        CONF_DAILY_GOAL_MINUTES,
+                        DEFAULT_DAILY_GOAL_MINUTES,
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)),
+                vol.Optional(
+                    CONF_WEEKLY_GOAL_ENABLED,
+                    default=form_options.get(
+                        CONF_WEEKLY_GOAL_ENABLED,
+                        DEFAULT_WEEKLY_GOAL_ENABLED,
+                    ),
+                ): bool,
+                vol.Optional(
+                    CONF_WEEKLY_GOAL_HOURS,
+                    default=form_options.get(
+                        CONF_WEEKLY_GOAL_HOURS,
+                        DEFAULT_WEEKLY_GOAL_HOURS,
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=80)),
+                vol.Optional(
+                    CONF_WEEKLY_GOAL_MINUTES,
+                    default=form_options.get(
+                        CONF_WEEKLY_GOAL_MINUTES,
+                        DEFAULT_WEEKLY_GOAL_MINUTES,
+                    ),
+                ): vol.All(vol.Coerce(int), vol.Range(min=0, max=59)),
                 vol.Optional(
                     CONF_BUTTON_ENABLED,
                     default=form_options.get(

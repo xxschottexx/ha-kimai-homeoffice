@@ -52,6 +52,12 @@
           "safety_stop_time": "Safety stop time",
           "notify": "Notification after clocking out",
           "notify_service": "Notify service",
+          "daily_goal_enabled": "Enable daily goal",
+          "daily_goal_hours": "Daily goal hours",
+          "daily_goal_minutes": "Daily goal minutes",
+          "weekly_goal_enabled": "Enable weekly goal",
+          "weekly_goal_hours": "Weekly goal hours",
+          "weekly_goal_minutes": "Weekly goal minutes",
           "button_enabled": "Enable button control",
           "button_trigger_type": "Button trigger",
           "button_entity": "Button entity",
@@ -86,6 +92,28 @@
       "invalid_time_range": "Start and end time must not be equal.",
       "invalid_notify_service": "Enter a valid notify service in the format notify.service_name.",
       "required": "This field is required."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "daily_goal": {
+        "name": "Daily goal"
+      },
+      "daily_balance": {
+        "name": "Daily balance"
+      },
+      "daily_remaining": {
+        "name": "Daily remaining"
+      },
+      "daily_goal_reached_at": {
+        "name": "Goal reached at"
+      },
+      "weekly_goal": {
+        "name": "Weekly goal"
+      },
+      "weekly_balance": {
+        "name": "Weekly balance"
+      }
     }
   }
 }
