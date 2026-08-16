@@ -27,6 +27,7 @@ class KimaiSummary:
 
     active_id: int = 0
     active_begin: str | None = None
+    active_seconds: int = 0
     today_seconds: int = 0
     week_seconds: int = 0
     month_seconds: int = 0
@@ -317,10 +318,12 @@ class KimaiApi:
 
         active_id = 0
         active_begin = None
+        active_seconds = 0
 
         if active:
             active_id = int(active.get("id", 0))
             active_begin = active.get("begin")
+            active_seconds = _duration_seconds(active)
 
         today_seconds = await self.duration_for_range(today_start, tomorrow_start)
         week_seconds = await self.duration_for_range(week_start, week_end)
@@ -329,6 +332,7 @@ class KimaiApi:
         return KimaiSummary(
             active_id=active_id,
             active_begin=active_begin,
+            active_seconds=active_seconds,
             today_seconds=today_seconds,
             week_seconds=week_seconds,
             month_seconds=month_seconds,

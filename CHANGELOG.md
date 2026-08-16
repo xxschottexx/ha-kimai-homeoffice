@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.3 - 2026-08-16
+
+### Added
+- Added runtime sensor showing the duration of the currently active Kimai timesheet in HH:MM format
+
+### Improved
+- Runtime now clearly separates the active work session duration from the daily total
+
 ## 0.3.2 - 2026-06-22
 
 ### Fixed
