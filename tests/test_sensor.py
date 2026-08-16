@@ -1,6 +1,7 @@
 """Tests for Kimai sensor value formatting."""
 
 import ast
+from math import isfinite
 from pathlib import Path
 from unittest import TestCase
 
@@ -18,19 +19,28 @@ FUNCTION_NAMES = {
     "_remaining_seconds",
     "_goal_seconds",
     "_round_seconds",
+    "_manual_goal_seconds",
+    "_resolve_daily_goal_seconds",
 }
 FORMAT_FUNCTIONS = [
     node
     for node in SENSOR_TREE.body
     if isinstance(node, ast.FunctionDef) and node.name in FUNCTION_NAMES
 ]
-NAMESPACE: dict[str, object] = {}
+NAMESPACE: dict[str, object] = {
+    "Any": object,
+    "isfinite": isfinite,
+    "DAILY_GOAL_MODE_DISABLED": "disabled",
+    "DAILY_GOAL_MODE_MANUAL_ENTITY": "manual_entity",
+    "DAILY_GOAL_MODE_WORKED_DAYS_ONLY": "worked_days_only",
+}
 exec(compile(ast.Module(FORMAT_FUNCTIONS, []), SENSOR_PATH, "exec"), NAMESPACE)
 _seconds_to_hhmm = NAMESPACE["_seconds_to_hhmm"]
 _seconds_to_signed_hhmm = NAMESPACE["_seconds_to_signed_hhmm"]
 _remaining_seconds = NAMESPACE["_remaining_seconds"]
 _goal_seconds = NAMESPACE["_goal_seconds"]
 _round_seconds = NAMESPACE["_round_seconds"]
+_resolve_daily_goal_seconds = NAMESPACE["_resolve_daily_goal_seconds"]
 
 
 class RuntimeFormattingTest(TestCase):
@@ -163,3 +173,90 @@ class TimeRoundingTest(TestCase):
                     ),
                     remaining,
                 )
+
+
+class FlexibleDailyGoalTest(TestCase):
+    """Test flexible daily goal modes."""
+
+    def test_fixed_mode(self) -> None:
+        """Fixed mode retains the existing daily goal behavior."""
+        goal = _resolve_daily_goal_seconds(
+            "fixed", True, _goal_seconds(7, 0), _goal_seconds(6, 30), 0
+        )
+
+        self.assertEqual(goal, _goal_seconds(7, 0))
+        self.assertEqual(
+            _seconds_to_signed_hhmm(_goal_seconds(6, 30) - goal),
+            "-00:30",
+        )
+        self.assertEqual(
+            _seconds_to_hhmm(_remaining_seconds(_goal_seconds(6, 30), goal)),
+            "00:30",
+        )
+
+    def test_disabled_mode(self) -> None:
+        """Disabled mode does not return a misleading fixed goal."""
+        self.assertIsNone(
+            _resolve_daily_goal_seconds(
+                "disabled", True, _goal_seconds(7, 0), 0, 0
+            )
+        )
+        self.assertIsNone(
+            _resolve_daily_goal_seconds(
+                "fixed", False, _goal_seconds(7, 0), 0, 0
+            )
+        )
+
+    def test_worked_days_only_mode(self) -> None:
+        """The fixed goal applies only after work exists or tracking starts."""
+        fixed = _goal_seconds(7, 0)
+        self.assertIsNone(
+            _resolve_daily_goal_seconds("worked_days_only", True, fixed, 0, 0)
+        )
+
+        for worked, active_id, expected_balance in (
+            (_goal_seconds(2, 15), 0, "-04:45"),
+            (_goal_seconds(0, 10), 42, "-06:50"),
+        ):
+            with self.subTest(worked=worked, active_id=active_id):
+                goal = _resolve_daily_goal_seconds(
+                    "worked_days_only", True, fixed, worked, active_id
+                )
+                self.assertEqual(goal, fixed)
+                self.assertEqual(
+                    _seconds_to_signed_hhmm(worked - goal),
+                    expected_balance,
+                )
+
+    def test_manual_entity_mode(self) -> None:
+        """Decimal entity hours become the active daily goal."""
+        worked = _goal_seconds(2, 15)
+
+        for state, expected_goal, balance, remaining in (
+            ("2", _goal_seconds(2, 0), "+00:15", "00:00"),
+            ("2.5", _goal_seconds(2, 30), "-00:15", "00:15"),
+        ):
+            with self.subTest(state=state):
+                goal = _resolve_daily_goal_seconds(
+                    "manual_entity", True, _goal_seconds(7, 0), worked, 0, state
+                )
+                self.assertEqual(goal, expected_goal)
+                self.assertEqual(
+                    _seconds_to_signed_hhmm(worked - goal),
+                    balance,
+                )
+                self.assertEqual(
+                    _seconds_to_hhmm(_remaining_seconds(worked, goal)),
+                    remaining,
+                )
+
+        self.assertIsNone(
+            _resolve_daily_goal_seconds(
+                "manual_entity",
+                True,
+                _goal_seconds(7, 0),
+                worked,
+                0,
+                "unknown",
+            )
+        )

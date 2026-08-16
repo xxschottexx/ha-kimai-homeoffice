@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.4 - 2026-08-16
+
+### Added
+- Added configurable daily goal modes
+- Added support for manual daily goal entity
+- Added homeoffice-days-only daily goal mode
+
+### Improved
+- Daily balance no longer shows misleading negative values on non-homeoffice days
+- Daily goal handling is now better suited for irregular homeoffice schedules
+
 ## 0.4.3 - 2026-08-16
 
 ### Added

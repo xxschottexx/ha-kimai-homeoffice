@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from datetime import timedelta
 import logging
+from math import isfinite
 from typing import Any, Callable
 
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import STATE_UNAVAILABLE, STATE_UNKNOWN
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
@@ -15,8 +17,10 @@ from homeassistant.util import dt as dt_util
 
 from .const import (
     CONF_DAILY_GOAL_ENABLED,
+    CONF_DAILY_GOAL_ENTITY,
     CONF_DAILY_GOAL_HOURS,
     CONF_DAILY_GOAL_MINUTES,
+    CONF_DAILY_GOAL_MODE,
     CONF_ROUNDING_ENABLED,
     CONF_ROUNDING_MINUTES,
     CONF_ROUNDING_MODE,
@@ -26,12 +30,16 @@ from .const import (
     DEFAULT_DAILY_GOAL_ENABLED,
     DEFAULT_DAILY_GOAL_HOURS,
     DEFAULT_DAILY_GOAL_MINUTES,
+    DEFAULT_DAILY_GOAL_MODE,
     DEFAULT_ROUNDING_ENABLED,
     DEFAULT_ROUNDING_MINUTES,
     DEFAULT_ROUNDING_MODE,
     DEFAULT_WEEKLY_GOAL_ENABLED,
     DEFAULT_WEEKLY_GOAL_HOURS,
     DEFAULT_WEEKLY_GOAL_MINUTES,
+    DAILY_GOAL_MODE_DISABLED,
+    DAILY_GOAL_MODE_MANUAL_ENTITY,
+    DAILY_GOAL_MODE_WORKED_DAYS_ONLY,
     DOMAIN,
 )
 from .coordinator import KimaiHomeofficeCoordinator
@@ -90,9 +98,52 @@ def _round_seconds(seconds: int, rounding_minutes: int, mode: str) -> int:
     return (seconds + step - 1) // step * step
 
 
-def _daily_goal_reached_at(data: KimaiSummary, goal_seconds: int) -> str | None:
+def _manual_goal_seconds(value: Any) -> int | None:
+    """Convert a decimal-hours entity state to goal seconds."""
+    try:
+        hours = float(value)
+    except (TypeError, ValueError):
+        return None
+
+    if not isfinite(hours) or hours < 0:
+        return None
+
+    return int(hours * 3600)
+
+
+def _resolve_daily_goal_seconds(
+    mode: str,
+    enabled: bool,
+    fixed_seconds: int,
+    today_seconds: int,
+    active_id: int,
+    manual_state: Any = None,
+) -> int | None:
+    """Resolve the applicable daily goal for the selected mode."""
+    if not enabled or mode == DAILY_GOAL_MODE_DISABLED:
+        return None
+
+    if mode == DAILY_GOAL_MODE_WORKED_DAYS_ONLY:
+        if today_seconds <= 0 and active_id <= 0:
+            return None
+        return fixed_seconds
+
+    if mode == DAILY_GOAL_MODE_MANUAL_ENTITY:
+        return _manual_goal_seconds(manual_state)
+
+    return fixed_seconds
+
+
+def _daily_goal_reached_at(
+    data: KimaiSummary,
+    goal_seconds: int | None,
+    worked_seconds: int,
+) -> str | None:
     """Return the current or estimated daily goal time."""
-    remaining = _remaining_seconds(data.today_seconds, goal_seconds)
+    if goal_seconds is None:
+        return None
+
+    remaining = _remaining_seconds(worked_seconds, goal_seconds)
     now = dt_util.now()
 
     if remaining == 0:
@@ -170,10 +221,16 @@ async def async_setup_entry(
     daily_goal_enabled = bool(
         entry.options.get(CONF_DAILY_GOAL_ENABLED, DEFAULT_DAILY_GOAL_ENABLED)
     )
-    daily_goal_seconds = _goal_seconds(
+    fixed_daily_goal_seconds = _goal_seconds(
         entry.options.get(CONF_DAILY_GOAL_HOURS, DEFAULT_DAILY_GOAL_HOURS),
         entry.options.get(CONF_DAILY_GOAL_MINUTES, DEFAULT_DAILY_GOAL_MINUTES),
     )
+    daily_goal_mode = str(
+        entry.options.get(CONF_DAILY_GOAL_MODE, DEFAULT_DAILY_GOAL_MODE)
+    )
+    daily_goal_entity = entry.options.get(CONF_DAILY_GOAL_ENTITY) or None
+    if daily_goal_mode == DAILY_GOAL_MODE_MANUAL_ENTITY and not daily_goal_entity:
+        _LOGGER.warning("Manual daily goal entity is not configured")
     weekly_goal_enabled = bool(
         entry.options.get(CONF_WEEKLY_GOAL_ENABLED, DEFAULT_WEEKLY_GOAL_ENABLED)
     )
@@ -196,9 +253,46 @@ async def async_setup_entry(
         if not rounding_enabled:
             return seconds
         return _round_seconds(seconds, rounding_minutes, rounding_mode)
+
+    def daily_goal_seconds(data: KimaiSummary) -> int | None:
+        """Return the currently applicable daily goal."""
+        manual_state: Any = None
+        if daily_goal_mode == DAILY_GOAL_MODE_MANUAL_ENTITY:
+            if daily_goal_entity:
+                state = hass.states.get(daily_goal_entity)
+                if state is None or state.state in {
+                    STATE_UNKNOWN,
+                    STATE_UNAVAILABLE,
+                    "",
+                }:
+                    _LOGGER.debug(
+                        "Manual daily goal entity %s has no valid state",
+                        daily_goal_entity,
+                    )
+                else:
+                    manual_state = state.state
+
+        goal = _resolve_daily_goal_seconds(
+            daily_goal_mode,
+            daily_goal_enabled,
+            fixed_daily_goal_seconds,
+            data.today_seconds,
+            data.active_id,
+            manual_state,
+        )
+        if (
+            daily_goal_mode == DAILY_GOAL_MODE_MANUAL_ENTITY
+            and goal is None
+            and manual_state is not None
+        ):
+            _LOGGER.debug(
+                "Manual daily goal entity %s is not numeric",
+                daily_goal_entity,
+            )
+        return goal
     _LOGGER.debug(
         "Goal sensors updated with daily goal %s and weekly goal %s",
-        _seconds_to_hhmm(daily_goal_seconds),
+        _seconds_to_hhmm(fixed_daily_goal_seconds),
         _seconds_to_hhmm(weekly_goal_seconds),
     )
 
@@ -217,9 +311,9 @@ async def async_setup_entry(
             "daily_goal",
             None,
             "mdi:target",
-            lambda data: _seconds_to_hhmm(daily_goal_seconds),
+            lambda data: _seconds_to_hhmm(daily_goal_seconds(data)),
             translation_key="daily_goal",
-            available_fn=lambda data: daily_goal_enabled,
+            available_fn=lambda data: daily_goal_seconds(data) is not None,
         ),
         KimaiHomeofficeSensor(
             coordinator,
@@ -228,10 +322,11 @@ async def async_setup_entry(
             None,
             "mdi:scale-balance",
             lambda data: _seconds_to_signed_hhmm(
-                displayed_seconds(data.today_seconds) - daily_goal_seconds
+                displayed_seconds(data.today_seconds)
+                - (daily_goal_seconds(data) or 0)
             ),
             translation_key="daily_balance",
-            available_fn=lambda data: daily_goal_enabled,
+            available_fn=lambda data: daily_goal_seconds(data) is not None,
         ),
         KimaiHomeofficeSensor(
             coordinator,
@@ -242,11 +337,11 @@ async def async_setup_entry(
             lambda data: _seconds_to_hhmm(
                 _remaining_seconds(
                     displayed_seconds(data.today_seconds),
-                    daily_goal_seconds,
+                    daily_goal_seconds(data) or 0,
                 )
             ),
             translation_key="daily_remaining",
-            available_fn=lambda data: daily_goal_enabled,
+            available_fn=lambda data: daily_goal_seconds(data) is not None,
         ),
         KimaiHomeofficeSensor(
             coordinator,
@@ -254,10 +349,18 @@ async def async_setup_entry(
             "daily_goal_reached_at",
             None,
             "mdi:clock-check-outline",
-            lambda data: _daily_goal_reached_at(data, daily_goal_seconds),
+            lambda data: _daily_goal_reached_at(
+                data,
+                daily_goal_seconds(data),
+                displayed_seconds(data.today_seconds),
+            ),
             translation_key="daily_goal_reached_at",
-            available_fn=lambda data: daily_goal_enabled
-            and (data.today_seconds >= daily_goal_seconds or data.active_id > 0),
+            available_fn=lambda data: daily_goal_seconds(data) is not None
+            and (
+                displayed_seconds(data.today_seconds)
+                >= (daily_goal_seconds(data) or 0)
+                or data.active_id > 0
+            ),
         ),
         KimaiHomeofficeSensor(
             coordinator,

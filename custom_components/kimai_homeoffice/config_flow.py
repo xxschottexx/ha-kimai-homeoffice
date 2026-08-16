@@ -27,8 +27,10 @@ from .const import (
     CONF_BUTTON_TRIGGER_TYPE,
     CONF_BUTTON_VALID_STATES,
     CONF_DAILY_GOAL_ENABLED,
+    CONF_DAILY_GOAL_ENTITY,
     CONF_DAILY_GOAL_HOURS,
     CONF_DAILY_GOAL_MINUTES,
+    CONF_DAILY_GOAL_MODE,
     CONF_NOTIFY,
     CONF_NOTIFY_SERVICE,
     CONF_OFFLINE_MINUTES,
@@ -54,6 +56,7 @@ from .const import (
     DEFAULT_DAILY_GOAL_ENABLED,
     DEFAULT_DAILY_GOAL_HOURS,
     DEFAULT_DAILY_GOAL_MINUTES,
+    DEFAULT_DAILY_GOAL_MODE,
     DEFAULT_NOTIFY,
     DEFAULT_OFFLINE_MINUTES,
     DEFAULT_OFFLINE_STOP,
@@ -339,6 +342,7 @@ class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
         form_options = user_input if user_input is not None else options
         worker_sensor = form_options.get(CONF_WORKER_SENSOR) or None
         button_entity = form_options.get(CONF_BUTTON_ENTITY) or None
+        daily_goal_entity = form_options.get(CONF_DAILY_GOAL_ENTITY) or None
 
         worker_sensor_field = vol.Optional(CONF_WORKER_SENSOR)
         if worker_sensor:
@@ -352,6 +356,13 @@ class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
             button_entity_field = vol.Optional(
                 CONF_BUTTON_ENTITY,
                 description={"suggested_value": button_entity},
+            )
+
+        daily_goal_entity_field = vol.Optional(CONF_DAILY_GOAL_ENTITY)
+        if daily_goal_entity:
+            daily_goal_entity_field = vol.Optional(
+                CONF_DAILY_GOAL_ENTITY,
+                description={"suggested_value": daily_goal_entity},
             )
 
         schema = vol.Schema(
@@ -410,6 +421,28 @@ class KimaiHomeofficeOptionsFlowHandler(config_entries.OptionsFlow):
                         DEFAULT_DAILY_GOAL_ENABLED,
                     ),
                 ): bool,
+                vol.Optional(
+                    CONF_DAILY_GOAL_MODE,
+                    default=form_options.get(
+                        CONF_DAILY_GOAL_MODE,
+                        DEFAULT_DAILY_GOAL_MODE,
+                    ),
+                ): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            "disabled",
+                            "fixed",
+                            "worked_days_only",
+                            "manual_entity",
+                        ],
+                        translation_key="daily_goal_mode",
+                    )
+                ),
+                daily_goal_entity_field: selector.EntitySelector(
+                    selector.EntitySelectorConfig(
+                        domain=["input_number", "number", "sensor"],
+                    )
+                ),
                 vol.Optional(
                     CONF_DAILY_GOAL_HOURS,
                     default=form_options.get(

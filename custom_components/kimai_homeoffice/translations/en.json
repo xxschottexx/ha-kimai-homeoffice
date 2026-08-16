@@ -53,6 +53,8 @@
           "notify": "Notification after clocking out",
           "notify_service": "Notify service",
           "daily_goal_enabled": "Enable daily goal",
+          "daily_goal_mode": "Daily goal mode",
+          "daily_goal_entity": "Manual daily goal entity",
           "daily_goal_hours": "Daily goal hours",
           "daily_goal_minutes": "Daily goal minutes",
           "weekly_goal_enabled": "Enable weekly goal",
@@ -89,7 +91,9 @@
           "button_cooldown_seconds": "Prevents duplicate triggers from repeated events.",
           "rounding_enabled": "Rounds displayed work times and the balances calculated from them.",
           "rounding_minutes": "Time rounding interval in minutes.",
-          "rounding_mode": "Choose whether work times are rounded up, down, or to the nearest value."
+          "rounding_mode": "Choose whether work times are rounded up, down, or to the nearest value.",
+          "daily_goal_mode": "Defines when a daily goal is calculated.",
+          "daily_goal_entity": "Entity that provides the daily goal in hours, e.g. input_number.homeoffice_daily_goal."
         }
       }
     },
@@ -101,6 +105,14 @@
     }
   },
   "selector": {
+    "daily_goal_mode": {
+      "options": {
+        "disabled": "Disabled",
+        "fixed": "Fixed daily goal",
+        "worked_days_only": "Homeoffice days only",
+        "manual_entity": "Manual daily goal"
+      }
+    },
     "rounding_mode": {
       "options": {
         "ceil": "Round up",
