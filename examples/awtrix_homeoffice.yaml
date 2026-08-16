@@ -1,0 +1,35 @@
+# Replace entity IDs and the AWTRIX MQTT topic if they differ in your installation.
+alias: Kimai Homeoffice AWTRIX Display
+description: Shows the active Kimai Homeoffice runtime on AWTRIX.
+mode: restart
+trigger:
+  - platform: time_pattern
+    minutes: "/1"
+  - platform: state
+    entity_id:
+      - binary_sensor.kimai_homeoffice_eingestempelt
+      - sensor.kimai_homeoffice_laufzeit
+condition: []
+action:
+  - choose:
+      - conditions:
+          - condition: state
+            entity_id: binary_sensor.kimai_homeoffice_eingestempelt
+            state: "on"
+        sequence:
+          - service: mqtt.publish
+            data:
+              topic: "awtrix/custom/homeoffice"
+              retain: true
+              payload: >
+                {
+                  "text": "HO {{ states('sensor.kimai_homeoffice_laufzeit') }}",
+                  "duration": 6,
+                  "lifetime": 300
+                }
+    default:
+      - service: mqtt.publish
+        data:
+          topic: "awtrix/custom/homeoffice"
+          retain: true
+          payload: ""

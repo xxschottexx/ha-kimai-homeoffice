@@ -1,0 +1,56 @@
+# Home Assistant may add prefixes or suffixes to entity IDs. Search for kimai_homeoffice in Developer Tools → States.
+title: Kimai Homeoffice Goals
+views:
+  - title: Homeoffice
+    path: homeoffice-goals
+    icon: mdi:target
+    cards:
+      - type: glance
+        title: Heute
+        columns: 3
+        entities:
+          - entity: sensor.kimai_homeoffice_heute
+            name: Heute gearbeitet
+          - entity: sensor.kimai_homeoffice_laufzeit
+            name: Aktuelle Laufzeit
+          - entity: binary_sensor.kimai_homeoffice_eingestempelt
+            name: Status
+          - entity: sensor.kimai_homeoffice_tagesziel
+            name: Tagesziel
+          - entity: sensor.kimai_homeoffice_saldo_heute
+            name: Saldo heute
+          - entity: sensor.kimai_homeoffice_restzeit_heute
+            name: Restzeit heute
+          - entity: sensor.kimai_homeoffice_ziel_erreicht_um
+            name: Ziel erreicht um
+
+      - type: glance
+        title: Woche und Monat
+        entities:
+          - entity: sensor.kimai_homeoffice_woche
+            name: Diese Woche
+          - entity: sensor.kimai_homeoffice_wochenziel
+            name: Wochenziel
+          - entity: sensor.kimai_homeoffice_saldo_woche
+            name: Saldo Woche
+          - entity: sensor.kimai_homeoffice_monat
+            name: Monat
+
+      - type: horizontal-stack
+        cards:
+          - type: button
+            name: Kommen
+            icon: mdi:login
+            tap_action:
+              action: perform-action
+              perform_action: button.press
+              target:
+                entity_id: button.kimai_homeoffice_kommen
+          - type: button
+            name: Gehen
+            icon: mdi:logout
+            tap_action:
+              action: perform-action
+              perform_action: button.press
+              target:
+                entity_id: button.kimai_homeoffice_gehen
