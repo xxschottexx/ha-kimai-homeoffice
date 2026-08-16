@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.4.0 - 2026-08-16
+
+### Added
+- Added configurable daily goal
+- Added configurable weekly goal
+- Added daily balance sensor
+- Added daily remaining sensor
+- Added goal reached at sensor
+- Added weekly balance sensor
+
+### Improved
+- Goal and balance calculations are now handled by the integration instead of dashboard templates
+
 ## 0.3.3 - 2026-08-16
 
 ### Added
