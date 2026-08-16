@@ -58,6 +58,9 @@
           "weekly_goal_enabled": "Enable weekly goal",
           "weekly_goal_hours": "Weekly goal hours",
           "weekly_goal_minutes": "Weekly goal minutes",
+          "rounding_enabled": "Enable time rounding",
+          "rounding_minutes": "Rounding minutes",
+          "rounding_mode": "Rounding mode",
           "button_enabled": "Enable button control",
           "button_trigger_type": "Button trigger",
           "button_entity": "Button entity",
@@ -83,7 +86,10 @@
           "button_mqtt_topic": "MQTT topic that sends a message when the button is pressed, for example zigbee2mqtt/005_ikea_silber.",
           "button_mqtt_json_key": "Optional JSON key whose value is used as the button press, for example action.",
           "button_valid_states": "Comma-separated states, for example on,single,press,toggle.",
-          "button_cooldown_seconds": "Prevents duplicate triggers from repeated events."
+          "button_cooldown_seconds": "Prevents duplicate triggers from repeated events.",
+          "rounding_enabled": "Rounds displayed work times and the balances calculated from them.",
+          "rounding_minutes": "Time rounding interval in minutes.",
+          "rounding_mode": "Choose whether work times are rounded up, down, or to the nearest value."
         }
       }
     },
@@ -92,6 +98,15 @@
       "invalid_time_range": "Start and end time must not be equal.",
       "invalid_notify_service": "Enter a valid notify service in the format notify.service_name.",
       "required": "This field is required."
+    }
+  },
+  "selector": {
+    "rounding_mode": {
+      "options": {
+        "ceil": "Round up",
+        "floor": "Round down",
+        "nearest": "Nearest"
+      }
     }
   },
   "entity": {

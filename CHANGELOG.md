@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.2 - 2026-08-16
+
+### Added
+- Added optional time rounding for Home Assistant displayed values
+- Added configurable rounding interval
+- Added rounding modes for round up, round down and nearest
+
+### Improved
+- Today, week, month and balance sensors can now follow Kimai-style rounding
+- Goal and balance calculations now use rounded values when rounding is enabled
+
 ## 0.4.1 - 2026-08-16
 
 ### Fixed
