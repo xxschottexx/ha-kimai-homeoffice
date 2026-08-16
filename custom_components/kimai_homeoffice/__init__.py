@@ -45,6 +45,23 @@ from .coordinator import KimaiHomeofficeCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
+def _parse_mqtt_button_payload(payload, json_key: str | None) -> str | None:
+    """Extract a button value from a plain or JSON MQTT payload."""
+    text = payload.decode() if isinstance(payload, bytes) else str(payload)
+    if not json_key:
+        return text
+
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+
+    if not isinstance(data, dict) or json_key not in data:
+        return None
+
+    return str(data[json_key])
+
+
 async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     """Set up Kimai Homeoffice services."""
 
@@ -102,6 +119,7 @@ class KimaiHomeofficeAutomation:
         self.coordinator = coordinator
         self._state_unsub: CALLBACK_TYPE | None = None
         self._button_unsub: CALLBACK_TYPE | None = None
+        self._button_listener_type: str | None = None
         self._offline_unsub: CALLBACK_TYPE | None = None
         self._safety_unsub: CALLBACK_TYPE | None = None
         self._last_button_press = 0.0
@@ -117,10 +135,22 @@ class KimaiHomeofficeAutomation:
         if self._state_unsub:
             self._state_unsub()
             self._state_unsub = None
-        if self._button_unsub:
-            self._button_unsub()
-            self._button_unsub = None
-            _LOGGER.debug("Button listener removed")
+        self._remove_button_listener()
+
+    def _remove_button_listener(self) -> None:
+        """Remove the active button listener, if any."""
+        if self._button_unsub is None:
+            return
+
+        self._button_unsub()
+        self._button_unsub = None
+
+        if self._button_listener_type == "mqtt":
+            _LOGGER.info("MQTT button listener removed")
+        elif self._button_listener_type == "entity":
+            _LOGGER.info("Entity button listener removed")
+
+        self._button_listener_type = None
 
     def _setup_worker_sensor_listener(self) -> None:
         worker_sensor = self._worker_sensor
@@ -134,6 +164,8 @@ class KimaiHomeofficeAutomation:
         )
 
     async def _async_setup_button_listener(self) -> None:
+        self._remove_button_listener()
+
         if not self._button_enabled:
             return
 
@@ -146,6 +178,9 @@ class KimaiHomeofficeAutomation:
     def _setup_entity_button_listener(self) -> None:
         button_entity = self._button_entity
         if not button_entity:
+            _LOGGER.warning(
+                "Button entity missing while entity button mode is enabled"
+            )
             return
 
         self._button_unsub = async_track_state_change_event(
@@ -153,12 +188,18 @@ class KimaiHomeofficeAutomation:
             [button_entity],
             self._async_button_state_changed,
         )
-        _LOGGER.debug("Button listener registered for %s", button_entity)
+        self._button_listener_type = "entity"
+        _LOGGER.info(
+            "Entity button listener registered for entity %s",
+            button_entity,
+        )
 
     async def _async_setup_mqtt_button_listener(self) -> None:
         topic = self._button_mqtt_topic
         if not topic:
-            _LOGGER.debug("Button state ignored: MQTT topic is missing")
+            _LOGGER.warning(
+                "MQTT topic missing while MQTT button mode is enabled"
+            )
             return
 
         try:
@@ -170,10 +211,11 @@ class KimaiHomeofficeAutomation:
                 self._mqtt_button_message,
             )
         except Exception as err:  # noqa: BLE001
-            _LOGGER.warning("MQTT button listener could not be registered: %s", err)
+            _LOGGER.warning("MQTT unavailable: %s", err)
             return
 
-        _LOGGER.debug("Button listener registered for MQTT topic %s", topic)
+        self._button_listener_type = "mqtt"
+        _LOGGER.info("MQTT button listener registered for topic %s", topic)
 
     def _cancel_offline_timer(self) -> None:
         if self._offline_unsub:
@@ -309,36 +351,24 @@ class KimaiHomeofficeAutomation:
         await self._async_handle_button_value(value)
 
     def _mqtt_button_value(self, payload) -> str | None:
-        text = payload.decode() if isinstance(payload, bytes) else str(payload)
-        json_key = self._button_mqtt_json_key
-        if not json_key:
-            return text
-
-        try:
-            data = json.loads(text)
-        except json.JSONDecodeError:
-            _LOGGER.debug("Button state ignored: MQTT payload is not valid JSON")
-            return None
-
-        if not isinstance(data, dict) or json_key not in data:
-            _LOGGER.debug("Button state ignored: MQTT JSON key is missing")
-            return None
-
-        return str(data[json_key])
+        value = _parse_mqtt_button_payload(payload, self._button_mqtt_json_key)
+        if value is None:
+            _LOGGER.debug("Button payload ignored because value is not valid")
+        return value
 
     async def _async_handle_button_value(self, value) -> None:
         if value is None:
-            _LOGGER.debug("Button state ignored: value is missing")
+            _LOGGER.debug("Button payload ignored because value is not valid")
             return
 
         state = str(value).strip()
         normalized_state = state.lower()
         if normalized_state in {STATE_UNKNOWN, STATE_UNAVAILABLE, "none", ""}:
-            _LOGGER.debug("Button state ignored: %s", state)
+            _LOGGER.debug("Button payload ignored because value is not valid")
             return
 
         if normalized_state not in self._button_valid_states:
-            _LOGGER.debug("Button state ignored: %s", state)
+            _LOGGER.debug("Button payload ignored because value is not valid")
             return
 
         now = monotonic()
@@ -468,6 +498,15 @@ class KimaiHomeofficeAutomation:
         return now_time >= start_time or now_time <= end_time
 
 
+async def _async_update_listener(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+) -> None:
+    """Reload the config entry after options are updated."""
+    _LOGGER.info("Options updated, reloading Kimai Homeoffice entry")
+    await hass.config_entries.async_reload(entry.entry_id)
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
@@ -483,11 +522,7 @@ async def async_setup_entry(
     automation = KimaiHomeofficeAutomation(hass, entry, coordinator)
     await automation.async_initialize()
     entry.async_on_unload(automation.async_remove)
-
-    async def _async_reload_entry(_hass: HomeAssistant, _entry: ConfigEntry) -> None:
-        await hass.config_entries.async_reload(_entry.entry_id)
-
-    entry.async_on_unload(entry.add_update_listener(_async_reload_entry))
+    entry.async_on_unload(entry.add_update_listener(_async_update_listener))
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 

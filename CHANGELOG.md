@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.1 - 2026-08-16
+
+### Fixed
+- Apply options changes without requiring a Home Assistant restart
+- Reload MQTT button listener after options changes
+- Prevent duplicate button listeners after reloads
+
+### Improved
+- Improved logging for button listener registration and options updates
+- Goal sensors now update reliably after options changes
+
 ## 0.4.0 - 2026-08-16
 
 ### Added

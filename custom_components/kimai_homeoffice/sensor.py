@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+import logging
 from typing import Any, Callable
 
 from homeassistant.components.sensor import SensorEntity
@@ -29,6 +30,8 @@ from .const import (
 )
 from .coordinator import KimaiHomeofficeCoordinator
 from .kimai_api import KimaiSummary
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _seconds_to_hhmm(seconds: int | None) -> str:
@@ -153,6 +156,11 @@ async def async_setup_entry(
     weekly_goal_seconds = _goal_seconds(
         entry.options.get(CONF_WEEKLY_GOAL_HOURS, DEFAULT_WEEKLY_GOAL_HOURS),
         entry.options.get(CONF_WEEKLY_GOAL_MINUTES, DEFAULT_WEEKLY_GOAL_MINUTES),
+    )
+    _LOGGER.debug(
+        "Goal sensors updated with daily goal %s and weekly goal %s",
+        _seconds_to_hhmm(daily_goal_seconds),
+        _seconds_to_hhmm(weekly_goal_seconds),
     )
 
     sensors = [
