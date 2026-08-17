@@ -1,6 +1,7 @@
 """Tests for Kimai sensor value formatting."""
 
 import ast
+from dataclasses import dataclass
 from math import isfinite
 from pathlib import Path
 from unittest import TestCase
@@ -32,6 +33,7 @@ NAMESPACE: dict[str, object] = {
     "DAILY_GOAL_MODE_MANUAL_ENTITY": "manual_entity",
     "DAILY_GOAL_MODE_WORKED_DAYS_ONLY": "worked_days_only",
     "DAILY_GOAL_MODE_WEEKLY_PLAN": "weekly_plan",
+    "dataclass": dataclass,
 }
 exec(compile(ast.Module(FORMAT_FUNCTIONS, []), SENSOR_PATH, "exec"), NAMESPACE)
 DAILY_GOAL_PATH = SENSOR_PATH.with_name("daily_goal.py")
@@ -39,8 +41,19 @@ DAILY_GOAL_TREE = ast.parse(DAILY_GOAL_PATH.read_text(encoding="utf-8"))
 DAILY_GOAL_FUNCTIONS = [
     node
     for node in DAILY_GOAL_TREE.body
-    if isinstance(node, ast.FunctionDef)
-    and node.name in {"manual_goal_seconds", "resolve_daily_goal_seconds"}
+    if (
+        isinstance(node, ast.ClassDef)
+        and node.name == "DailyGoalResolution"
+    )
+    or (
+        isinstance(node, ast.FunctionDef)
+        and node.name
+        in {
+            "manual_goal_seconds",
+            "resolve_daily_goal",
+            "resolve_daily_goal_seconds",
+        }
+    )
 ]
 exec(
     compile(ast.Module(DAILY_GOAL_FUNCTIONS, []), DAILY_GOAL_PATH, "exec"),
@@ -52,6 +65,7 @@ _remaining_seconds = NAMESPACE["_remaining_seconds"]
 _goal_seconds = NAMESPACE["_goal_seconds"]
 _round_seconds = NAMESPACE["_round_seconds"]
 _resolve_daily_goal_seconds = NAMESPACE["resolve_daily_goal_seconds"]
+_resolve_daily_goal = NAMESPACE["resolve_daily_goal"]
 
 
 class RuntimeFormattingTest(TestCase):
@@ -247,6 +261,20 @@ class FlexibleDailyGoalTest(TestCase):
             0,
         )
 
+        unplanned = _resolve_daily_goal(
+            "weekly_plan",
+            True,
+            fixed,
+            _goal_seconds(2, 15),
+            0,
+            planned_today=False,
+            current_date="2026-08-18",
+        )
+        self.assertEqual(unplanned.seconds, 0)
+        self.assertFalse(unplanned.applicable)
+        self.assertEqual(_seconds_to_signed_hhmm(0), "±00:00")
+        self.assertEqual(_seconds_to_hhmm(0), "00:00")
+
     def test_weekly_plan_manual_override(self) -> None:
         """Only an override stored for the current date is applied."""
         fixed = _goal_seconds(7, 0)
@@ -278,6 +306,20 @@ class FlexibleDailyGoalTest(TestCase):
             ),
             fixed,
         )
+
+        manual_zero = _resolve_daily_goal(
+            "weekly_plan",
+            True,
+            fixed,
+            _goal_seconds(2, 15),
+            0,
+            planned_today=True,
+            manual_override_hours=0,
+            manual_override_date="2026-08-19",
+            current_date="2026-08-19",
+        )
+        self.assertEqual(manual_zero.seconds, 0)
+        self.assertFalse(manual_zero.applicable)
     def test_worked_days_only_mode(self) -> None:
         """The fixed goal applies only after work exists or tracking starts."""
         fixed = _goal_seconds(7, 0)

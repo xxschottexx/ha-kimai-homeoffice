@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.4.6 - 2026-08-17
+
+### Fixed
+- Prevent misleading positive daily balance on unplanned homeoffice days
+- Treat unplanned weekly-plan days without a manual goal as neutral
+- Treat manual daily goal value 0 as an intentional no-goal day
+
+### Improved
+- Daily goal resolution now distinguishes between zero goal and no applicable goal
+- Weekly planning is now better suited for spontaneous partial homeoffice days
+
 ## 0.4.5 - 2026-08-16
 
 ### Added

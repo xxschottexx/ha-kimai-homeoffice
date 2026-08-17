@@ -48,7 +48,7 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import KimaiHomeofficeCoordinator
-from .daily_goal import resolve_daily_goal_seconds
+from .daily_goal import DailyGoalResolution, resolve_daily_goal
 from .kimai_api import KimaiSummary
 
 _LOGGER = logging.getLogger(__name__)
@@ -231,7 +231,7 @@ async def async_setup_entry(
             return seconds
         return _round_seconds(seconds, rounding_minutes, rounding_mode)
 
-    def daily_goal_seconds(data: KimaiSummary) -> int | None:
+    def daily_goal_resolution(data: KimaiSummary) -> DailyGoalResolution:
         """Return the currently applicable daily goal."""
         manual_state: Any = None
         if daily_goal_mode == DAILY_GOAL_MODE_MANUAL_ENTITY:
@@ -261,7 +261,7 @@ async def async_setup_entry(
         ):
             _LOGGER.debug("Stale manual daily goal ignored")
 
-        goal = resolve_daily_goal_seconds(
+        resolution = resolve_daily_goal(
             daily_goal_mode,
             daily_goal_enabled,
             fixed_daily_goal_seconds,
@@ -277,7 +277,7 @@ async def async_setup_entry(
         )
         if (
             daily_goal_mode == DAILY_GOAL_MODE_MANUAL_ENTITY
-            and goal is None
+            and not resolution.applicable
             and manual_state is not None
         ):
             _LOGGER.debug(
@@ -287,9 +287,14 @@ async def async_setup_entry(
         if daily_goal_mode == DAILY_GOAL_MODE_WEEKLY_PLAN:
             _LOGGER.debug(
                 "Weekly plan daily goal resolved: %s",
-                _seconds_to_hhmm(goal),
+                _seconds_to_hhmm(resolution.seconds),
             )
-        return goal
+        return resolution
+
+    def daily_goal_sensors_available(data: KimaiSummary) -> bool:
+        """Return whether daily goal values should be exposed."""
+        resolution = daily_goal_resolution(data)
+        return resolution.applicable or daily_goal_mode == DAILY_GOAL_MODE_WEEKLY_PLAN
     _LOGGER.debug(
         "Goal sensors updated with daily goal %s and weekly goal %s",
         _seconds_to_hhmm(fixed_daily_goal_seconds),
@@ -311,9 +316,9 @@ async def async_setup_entry(
             "daily_goal",
             None,
             "mdi:target",
-            lambda data: _seconds_to_hhmm(daily_goal_seconds(data)),
+            lambda data: _seconds_to_hhmm(daily_goal_resolution(data).seconds),
             translation_key="daily_goal",
-            available_fn=lambda data: daily_goal_seconds(data) is not None,
+            available_fn=daily_goal_sensors_available,
         ),
         KimaiHomeofficeSensor(
             coordinator,
@@ -323,10 +328,12 @@ async def async_setup_entry(
             "mdi:scale-balance",
             lambda data: _seconds_to_signed_hhmm(
                 displayed_seconds(data.today_seconds)
-                - (daily_goal_seconds(data) or 0)
+                - daily_goal_resolution(data).seconds
+                if daily_goal_resolution(data).applicable
+                else 0
             ),
             translation_key="daily_balance",
-            available_fn=lambda data: daily_goal_seconds(data) is not None,
+            available_fn=daily_goal_sensors_available,
         ),
         KimaiHomeofficeSensor(
             coordinator,
@@ -337,11 +344,13 @@ async def async_setup_entry(
             lambda data: _seconds_to_hhmm(
                 _remaining_seconds(
                     displayed_seconds(data.today_seconds),
-                    daily_goal_seconds(data) or 0,
+                    daily_goal_resolution(data).seconds,
                 )
+                if daily_goal_resolution(data).applicable
+                else 0
             ),
             translation_key="daily_remaining",
-            available_fn=lambda data: daily_goal_seconds(data) is not None,
+            available_fn=daily_goal_sensors_available,
         ),
         KimaiHomeofficeSensor(
             coordinator,
@@ -351,14 +360,14 @@ async def async_setup_entry(
             "mdi:clock-check-outline",
             lambda data: _daily_goal_reached_at(
                 data,
-                daily_goal_seconds(data),
+                daily_goal_resolution(data).seconds,
                 displayed_seconds(data.today_seconds),
             ),
             translation_key="daily_goal_reached_at",
-            available_fn=lambda data: (daily_goal_seconds(data) or 0) > 0
+            available_fn=lambda data: daily_goal_resolution(data).applicable
             and (
                 displayed_seconds(data.today_seconds)
-                >= (daily_goal_seconds(data) or 0)
+                >= daily_goal_resolution(data).seconds
                 or data.active_id > 0
             ),
         ),
