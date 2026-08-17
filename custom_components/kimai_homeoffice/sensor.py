@@ -48,7 +48,12 @@ from .const import (
     DOMAIN,
 )
 from .coordinator import KimaiHomeofficeCoordinator
-from .daily_goal import DailyGoalResolution, resolve_daily_goal
+from .daily_goal import (
+    DailyGoalResolution,
+    DailyGoalValues,
+    calculate_daily_goal_values,
+    resolve_daily_goal,
+)
 from .kimai_api import KimaiSummary
 
 _LOGGER = logging.getLogger(__name__)
@@ -106,14 +111,14 @@ def _round_seconds(seconds: int, rounding_minutes: int, mode: str) -> int:
 
 def _daily_goal_reached_at(
     data: KimaiSummary,
-    goal_seconds: int | None,
+    resolution: DailyGoalResolution,
     worked_seconds: int,
 ) -> str | None:
     """Return the current or estimated daily goal time."""
-    if goal_seconds is None:
+    if not resolution.applicable:
         return None
 
-    remaining = _remaining_seconds(worked_seconds, goal_seconds)
+    remaining = _remaining_seconds(worked_seconds, resolution.seconds)
     now = dt_util.now()
 
     if remaining == 0:
@@ -295,6 +300,13 @@ async def async_setup_entry(
         """Return whether daily goal values should be exposed."""
         resolution = daily_goal_resolution(data)
         return resolution.applicable or daily_goal_mode == DAILY_GOAL_MODE_WEEKLY_PLAN
+
+    def daily_goal_values(data: KimaiSummary) -> DailyGoalValues:
+        """Return all daily goal values from one resolution."""
+        return calculate_daily_goal_values(
+            displayed_seconds(data.today_seconds),
+            daily_goal_resolution(data),
+        )
     _LOGGER.debug(
         "Goal sensors updated with daily goal %s and weekly goal %s",
         _seconds_to_hhmm(fixed_daily_goal_seconds),
@@ -316,7 +328,7 @@ async def async_setup_entry(
             "daily_goal",
             None,
             "mdi:target",
-            lambda data: _seconds_to_hhmm(daily_goal_resolution(data).seconds),
+            lambda data: _seconds_to_hhmm(daily_goal_values(data).goal_seconds),
             translation_key="daily_goal",
             available_fn=daily_goal_sensors_available,
         ),
@@ -327,10 +339,7 @@ async def async_setup_entry(
             None,
             "mdi:scale-balance",
             lambda data: _seconds_to_signed_hhmm(
-                displayed_seconds(data.today_seconds)
-                - daily_goal_resolution(data).seconds
-                if daily_goal_resolution(data).applicable
-                else 0
+                daily_goal_values(data).balance_seconds
             ),
             translation_key="daily_balance",
             available_fn=daily_goal_sensors_available,
@@ -342,12 +351,7 @@ async def async_setup_entry(
             None,
             "mdi:timer-sand",
             lambda data: _seconds_to_hhmm(
-                _remaining_seconds(
-                    displayed_seconds(data.today_seconds),
-                    daily_goal_resolution(data).seconds,
-                )
-                if daily_goal_resolution(data).applicable
-                else 0
+                daily_goal_values(data).remaining_seconds
             ),
             translation_key="daily_remaining",
             available_fn=daily_goal_sensors_available,
@@ -360,7 +364,7 @@ async def async_setup_entry(
             "mdi:clock-check-outline",
             lambda data: _daily_goal_reached_at(
                 data,
-                daily_goal_resolution(data).seconds,
+                daily_goal_resolution(data),
                 displayed_seconds(data.today_seconds),
             ),
             translation_key="daily_goal_reached_at",

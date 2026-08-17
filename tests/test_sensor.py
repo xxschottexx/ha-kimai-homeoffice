@@ -43,7 +43,7 @@ DAILY_GOAL_FUNCTIONS = [
     for node in DAILY_GOAL_TREE.body
     if (
         isinstance(node, ast.ClassDef)
-        and node.name == "DailyGoalResolution"
+        and node.name in {"DailyGoalResolution", "DailyGoalValues"}
     )
     or (
         isinstance(node, ast.FunctionDef)
@@ -52,6 +52,7 @@ DAILY_GOAL_FUNCTIONS = [
             "manual_goal_seconds",
             "resolve_daily_goal",
             "resolve_daily_goal_seconds",
+            "calculate_daily_goal_values",
         }
     )
 ]
@@ -66,6 +67,7 @@ _goal_seconds = NAMESPACE["_goal_seconds"]
 _round_seconds = NAMESPACE["_round_seconds"]
 _resolve_daily_goal_seconds = NAMESPACE["resolve_daily_goal_seconds"]
 _resolve_daily_goal = NAMESPACE["resolve_daily_goal"]
+_calculate_daily_goal_values = NAMESPACE["calculate_daily_goal_values"]
 
 
 class RuntimeFormattingTest(TestCase):
@@ -272,8 +274,19 @@ class FlexibleDailyGoalTest(TestCase):
         )
         self.assertEqual(unplanned.seconds, 0)
         self.assertFalse(unplanned.applicable)
-        self.assertEqual(_seconds_to_signed_hhmm(0), "±00:00")
-        self.assertEqual(_seconds_to_hhmm(0), "00:00")
+        values = _calculate_daily_goal_values(_goal_seconds(0, 20), unplanned)
+        self.assertEqual(values.goal_seconds, 0)
+        self.assertEqual(values.balance_seconds, 0)
+        self.assertEqual(values.remaining_seconds, 0)
+        self.assertFalse(values.applicable)
+        self.assertEqual(
+            _seconds_to_signed_hhmm(values.balance_seconds),
+            "±00:00",
+        )
+        self.assertEqual(
+            _seconds_to_hhmm(values.remaining_seconds),
+            "00:00",
+        )
 
     def test_weekly_plan_manual_override(self) -> None:
         """Only an override stored for the current date is applied."""
@@ -320,6 +333,12 @@ class FlexibleDailyGoalTest(TestCase):
         )
         self.assertEqual(manual_zero.seconds, 0)
         self.assertFalse(manual_zero.applicable)
+        zero_values = _calculate_daily_goal_values(
+            _goal_seconds(2, 15),
+            manual_zero,
+        )
+        self.assertEqual(zero_values.balance_seconds, 0)
+        self.assertEqual(zero_values.remaining_seconds, 0)
     def test_worked_days_only_mode(self) -> None:
         """The fixed goal applies only after work exists or tracking starts."""
         fixed = _goal_seconds(7, 0)
