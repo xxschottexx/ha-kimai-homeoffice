@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.4.7 - 2026-08-17
+
+### Fixed
+- Ensure unplanned weekly-plan days always expose a neutral daily balance
+- Keep goal reached time unavailable when no daily goal applies
+- Prevent downstream sensor calculations from treating no goal as a zero-hour goal
+
+### Improved
+- Daily goal, balance and remaining values now come from one consistent resolution
+
 ## 0.4.6 - 2026-08-17
 
 ### Fixed

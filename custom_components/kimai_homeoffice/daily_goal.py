@@ -23,6 +23,16 @@ class DailyGoalResolution:
     reason: str
 
 
+@dataclass(frozen=True)
+class DailyGoalValues:
+    """Daily sensor values derived from one goal resolution."""
+
+    goal_seconds: int
+    balance_seconds: int
+    remaining_seconds: int
+    applicable: bool
+
+
 def manual_goal_seconds(value: Any) -> int | None:
     """Convert decimal hours to goal seconds."""
     try:
@@ -107,3 +117,19 @@ def resolve_daily_goal_seconds(
         return resolution.seconds
 
     return None
+
+
+def calculate_daily_goal_values(
+    worked_seconds: int,
+    resolution: DailyGoalResolution,
+) -> DailyGoalValues:
+    """Calculate neutral or applicable daily goal sensor values."""
+    if not resolution.applicable:
+        return DailyGoalValues(resolution.seconds, 0, 0, False)
+
+    return DailyGoalValues(
+        resolution.seconds,
+        worked_seconds - resolution.seconds,
+        max(resolution.seconds - worked_seconds, 0),
+        True,
+    )
